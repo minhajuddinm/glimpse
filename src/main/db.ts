@@ -7,6 +7,17 @@ const MIGRATIONS: readonly string[] = [
   `CREATE TABLE settings (
      key   TEXT PRIMARY KEY,
      value TEXT NOT NULL
+   ) STRICT;`,
+  `CREATE TABLE self_test (
+     id     INTEGER PRIMARY KEY CHECK (id = 1),
+     result TEXT NOT NULL
+   ) STRICT;
+   CREATE TABLE capture_matrix (
+     app           TEXT PRIMARY KEY,
+     result        TEXT NOT NULL CHECK (result IN ('PASS', 'FAIL')),
+     notes         TEXT NOT NULL,
+     tested_at     TEXT NOT NULL,
+     windows_build INTEGER
    ) STRICT;`
 ]
 

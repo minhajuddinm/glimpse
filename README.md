@@ -2,13 +2,13 @@
 
 A real-time conversation copilot for **Windows**. It listens to your call (your microphone plus the other side's audio), transcribes it locally, and shows short answers in a side panel. The panel is hidden from screen sharing and recording. Answers come from **your own notes folder first**, for example your interview notes and prepared answers.
 
-> **Status: early development.** Milestone M0 (project scaffold) is done. The overlay, audio capture, live answers and notes search are being built in that order. The checklist below tracks what works today.
+> **Status: early development.** Pillar A (the capture-invisible overlay) is done. Audio capture, live answers and notes search are being built in that order. The progress table below tracks what works today.
 
 ## Requirements
 
 - Windows 11, or Windows 10 version 2004 or later. Hiding from capture needs `WDA_EXCLUDEFROMCAPTURE`, which Windows added in 2004.
 - Node.js 22 or later (developed on 24).
-- Optional API keys:
+- Optional API keys (used from Pillar C onward):
   - **Anthropic** for the best answers (Claude Haiku 5.5, roughly $0.04 per hour of use).
   - **Groq** for free mode (free tier, lower answer rate).
 - No Visual Studio or other native build tools are needed.
@@ -19,42 +19,74 @@ A real-time conversation copilot for **Windows**. It listens to your call (your 
 npm install
 npm run dev        # run with hot reload
 npm run check      # typecheck + lint + unit tests
+npm run selftest   # build, then run the capture self-test headless (exit code 0 = PASS)
+npm run canary     # build, then show the test pattern on the protected overlay for 60 s (for external recorders)
 npm run dist       # build a Windows installer into release/
 ```
 
 Glimpse runs in the system tray. Click the violet dot to open Settings.
 
+## The overlay
+
+- A frameless, transparent, always-on-top panel on the right of the primary display. It is never focusable, so showing or hiding it does not take focus from the app you are typing in.
+- **Hidden from capture.** Glimpse asks Windows to exclude the window (`WDA_EXCLUDEFROMCAPTURE`), sets that before the window is shown, then reads the setting back from Windows and **hides the overlay again if Windows says it is capturable**. On Windows 10 before version 2004, where only `WDA_MONITOR` exists, it falls back to a faint "capture-safe" overlay.
+- **Click-through.** By default clicks pass through the panel to the app behind it. Only the header stays clickable, using a hit-box checked every 60 ms. Toggle with the hotkey or the Lock/Unlock button.
+- **Panic hide.** One key hides the overlay and the tray icon and mutes capture. The same key brings everything back.
+
+### Hotkeys (rebindable in Settings → Hotkeys)
+
+| Action | Default |
+|---|---|
+| Show / hide overlay | `Ctrl+Alt+G` |
+| Toggle click-through | `Ctrl+Alt+C` |
+| Panic hide / restore | `Ctrl+Alt+H` |
+
+Another app may already own a shortcut (Claude Desktop's Quick Entry uses `Ctrl+Alt+Space`, for example). Glimpse then shows a notification and flags the key in Settings → Hotkeys. Pick another one there.
+
+## Check that it really is invisible
+
+**Settings → Capture test** has two checks:
+
+1. **Self-test.** Paints the overlay with a magenta/green pattern, captures the display the way a recorder does, and looks for the pattern in a grid of 12 regions. A baseline capture (overlay hidden) rules out wallpaper that happens to be magenta or green. A control capture with protection switched off for a moment proves the test can see the overlay at all. The result is **PASS**, **FAIL** or **INCONCLUSIVE** (the control saw nothing), with diff images. The pattern is briefly visible on your screen, so don't run it during a live share.
+2. **Live test.** Shows the pattern for 30–120 s while you record or share your screen in a real app. Then record what you saw. Results fill the capture matrix below and are kept in the app.
+
+The self-test result (verdict and per-region numbers) is saved. The diff images show a strip of your actual screen, so they are **never saved**. `npm run selftest` writes them to `%TEMP%\glimpse-selftest` — delete them when you are done.
+
+### Capture matrix (Windows)
+
+"PASS" means the overlay was absent from the shared or recorded image. Rows marked *automated* were verified by Glimpse's own tests on Windows 11 build 26300; the rest need a person with the app and are not yet tested.
+
+| Tool | Result | Notes |
+|---|---|---|
+| Electron `desktopCapturer` (same path browsers and Electron-based recorders use) | PASS | Automated self-test, 0 overlay pixels, control saw 100% |
+| GDI `CopyFromScreen` (classic screenshot / BitBlt path) | PASS | Automated, separate process: 0 of 282,240 overlay-region pixels; a normal magenta window in the same shot was 20,000 of 20,000 |
+| Zoom screen share | — | Not tested |
+| Google Meet (Chrome) share | — | Not tested |
+| Microsoft Teams share | — | Not tested |
+| OBS Display Capture | — | Not tested |
+| OBS Window Capture (WGC) | — | Not tested |
+| Snipping Tool / Win+Shift+S | — | Not tested |
+| Xbox Game Bar recording | — | Not tested |
+| Loom | — | Not tested |
+| Discord screen share | — | Not tested |
+
+Windows 10 before 2004 (`WDA_MONITOR` capture-safe mode) is implemented but has not been tested.
+
 ## Privacy
 
-- Speech recognition runs **on your machine**. Audio is never uploaded unless you turn on the optional cloud accuracy setting.
+- Speech recognition will run **on your machine**. Audio is never uploaded unless you turn on the optional cloud accuracy setting.
 - Only the transcript excerpt and the matching snippets from your notes are sent to the LLM provider whose key you configure.
-- There is no account and no telemetry. API keys are encrypted with Windows DPAPI through Electron `safeStorage`.
+- There is no account and no telemetry. API keys will be encrypted with Windows DPAPI through Electron `safeStorage`.
 
 ## Progress
 
 | Milestone | What it delivers | Status |
 |---|---|---|
 | M0 | Electron + React + TypeScript strict, Zod-validated IPC, SQLite settings, tray | ✅ |
-| A | Capture-invisible overlay, click-through, panic hide, capture self-test | ⏳ |
+| A | Capture-invisible overlay, click-through, panic hide, hotkeys, capture self-test and live test | ✅ (manual recorder tests pending) |
 | B | Microphone + system audio, local streaming transcription, speaker labels | ⏳ |
 | C | Question detection, live answers, modes, screenshot context, hotkeys | ⏳ |
 | KB | Notes-folder search (Markdown/TXT/DOCX/PDF), instant prepared answers | ⏳ |
-
-## Capture matrix (Windows)
-
-Filled in during the Pillar A tests. "PASS" means the overlay is absent from the shared or recorded image.
-
-| Tool | Result | Notes |
-|---|---|---|
-| Zoom screen share | — | |
-| Google Meet (Chrome) share | — | |
-| Microsoft Teams share | — | |
-| OBS Display Capture | — | |
-| OBS Window Capture (WGC) | — | |
-| Snipping Tool / Win+Shift+S | — | |
-| Xbox Game Bar recording | — | |
-| Loom | — | |
-| Discord screen share | — | |
 
 ## Project docs
 

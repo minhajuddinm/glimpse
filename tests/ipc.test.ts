@@ -1,10 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { INVOKE_CHANNELS } from '../src/shared/channels'
-import { ipcContract } from '../src/shared/ipc'
+import { EVENT_CHANNELS, INVOKE_CHANNELS } from '../src/shared/channels'
+import { ipcContract, ipcEvents } from '../src/shared/ipc'
 
 describe('IPC contract', () => {
-  it('preload allow-list matches the contract exactly', () => {
+  it('preload invoke allow-list matches the contract exactly', () => {
     expect([...INVOKE_CHANNELS].sort()).toEqual(Object.keys(ipcContract).sort())
+  })
+
+  it('preload event allow-list matches the event schemas exactly', () => {
+    expect([...EVENT_CHANNELS].sort()).toEqual(Object.keys(ipcEvents).sort())
+  })
+
+  it('rejects out-of-range live-test durations and hotkey payloads', () => {
+    expect(ipcContract['live:start'].request.safeParse({ seconds: 1 }).success).toBe(false)
+    expect(ipcContract['live:start'].request.safeParse({ seconds: 60 }).success).toBe(true)
+    expect(ipcContract['hotkeys:set'].request.safeParse({ action: 'launchMissiles', accelerator: 'Ctrl+K' }).success).toBe(false)
+  })
+
+  it('does not let the renderer change hotkeys through settings:update', () => {
+    const parsed = ipcContract['settings:update'].request.parse({ mode: 'sales', hotkeys: { panicHide: 'Ctrl+X' } })
+    expect(parsed).toEqual({ mode: 'sales' })
   })
 
   it('rejects malformed settings patches', () => {

@@ -23,16 +23,22 @@ function trayIcon(): NativeImage {
   return nativeImage.createFromBitmap(pixels, { width: SIZE, height: SIZE })
 }
 
-export function createTray(onOpenSettings: () => void): Tray {
+export interface TrayActions {
+  readonly onOpenSettings: () => void
+  readonly onToggleOverlay: () => void
+}
+
+export function createTray(actions: TrayActions): Tray {
   const tray = new Tray(trayIcon())
   tray.setToolTip('Glimpse')
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Settings', click: onOpenSettings },
+      { label: 'Show / hide overlay', click: actions.onToggleOverlay },
+      { label: 'Settings', click: actions.onOpenSettings },
       { type: 'separator' },
       { label: 'Quit Glimpse', click: () => { app.quit() } }
     ])
   )
-  tray.on('click', onOpenSettings)
+  tray.on('click', actions.onOpenSettings)
   return tray
 }

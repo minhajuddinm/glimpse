@@ -23,7 +23,10 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     build: {
       rolldownOptions: {
-        input: { index: resolve(import.meta.dirname, 'src/renderer/index.html') }
+        input: {
+          index: resolve(import.meta.dirname, 'src/renderer/index.html'),
+          overlay: resolve(import.meta.dirname, 'src/renderer/overlay.html')
+        }
       }
     }
   }

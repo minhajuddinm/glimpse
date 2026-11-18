@@ -1,10 +1,5 @@
 import { z } from 'zod'
-import {
-  applySettingsPatch,
-  mergeStoredSettings,
-  type Settings,
-  type SettingsPatch
-} from '../shared/settings'
+import { applySettingsPatch, mergeStoredSettings, type Settings, type SettingsUpdate } from '../shared/settings'
 import { transaction, type Db } from './db'
 
 const RowsSchema = z.array(z.object({ key: z.string(), value: z.string() }))
@@ -25,7 +20,7 @@ export class SettingsStore {
     return mergeStoredSettings(stored)
   }
 
-  update(patch: SettingsPatch): Settings {
+  update(patch: SettingsUpdate): Settings {
     const next = applySettingsPatch(this.get(), patch)
     const upsert = this.db.prepare(
       'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
