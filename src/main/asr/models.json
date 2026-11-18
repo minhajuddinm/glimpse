@@ -1,0 +1,62 @@
+[
+  {
+    "id": "zipformer-en-20m",
+    "dir": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2",
+    "bytes": 127887156,
+    "sha256": "9c559283e8498d3fe95913c79ca1cb454bb26281ac2b102b41306c7d752765d9",
+    "family": "zipformer",
+    "note": "Smallest and fastest English streaming Zipformer.",
+    "featureDim": 80
+  },
+  {
+    "id": "zipformer-en-2023-06-26",
+    "dir": "sherpa-onnx-streaming-zipformer-en-2023-06-26",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-2023-06-26.tar.bz2",
+    "bytes": 310414022,
+    "sha256": null,
+    "family": "zipformer",
+    "note": "Standard English streaming Zipformer (fp32 and int8 inside).",
+    "featureDim": 80
+  },
+  {
+    "id": "kroko-en",
+    "dir": "sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06.tar.bz2",
+    "bytes": 57267600,
+    "sha256": "c8676e5ff9ac2a85296e53ee0fd4d5fb1db6770e7a7647166eeafe349ade6834",
+    "family": "zipformer",
+    "note": "Small modern streaming Zipformer (Kroko).",
+    "featureDim": 80
+  },
+  {
+    "id": "nemo-fc-80ms",
+    "dir": "sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-80ms-int8",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-80ms-int8.tar.bz2",
+    "bytes": 102813625,
+    "sha256": "7bd33a914e93370a1ba9c2066d9e841bdcad8613fa2a00537c1ae15d851a14d8",
+    "family": "nemo-transducer",
+    "note": "NeMo streaming FastConformer transducer, 80 ms chunks, int8.",
+    "featureDim": 80
+  },
+  {
+    "id": "nemo-fc-480ms",
+    "dir": "sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-480ms-int8",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-streaming-fast-conformer-transducer-en-480ms-int8.tar.bz2",
+    "bytes": 105913204,
+    "sha256": "da93061cbf7b708b6b65976f70b29f519be29df750d8cdcabf98c65645930f13",
+    "family": "nemo-transducer",
+    "note": "NeMo streaming FastConformer transducer, 480 ms chunks, int8.",
+    "featureDim": 80
+  },
+  {
+    "id": "nemotron-0.6b",
+    "dir": "sherpa-onnx-nemotron-speech-streaming-en-0.6b-int8-2026-01-14",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemotron-speech-streaming-en-0.6b-int8-2026-01-14.tar.bz2",
+    "bytes": 468994262,
+    "sha256": "e4d001a058a6f736fa4f59accfd61bd03465fd2f8b4a8864079b2c3f86c74ac8",
+    "family": "nemotron",
+    "note": "NVIDIA Nemotron speech streaming 0.6B, int8. Largest and likely most accurate.",
+    "featureDim": 128
+  }
+]

@@ -21,6 +21,9 @@ npm run dev        # run with hot reload
 npm run check      # typecheck + lint + unit tests
 npm run selftest   # build, then run the capture self-test headless (exit code 0 = PASS)
 npm run canary     # build, then show the test pattern on the protected overlay for 60 s (for external recorders)
+npm run fetch-models # download speech-recognition models into models/ (about 1.1 GB for all candidates; hashes are verified)
+npm run bench:audio  # make the 24-sentence benchmark audio with the Windows voices
+npm run bench:asr    # benchmark the installed models (WER, latency, real-time factor)
 npm run dist       # build a Windows installer into release/
 ```
 

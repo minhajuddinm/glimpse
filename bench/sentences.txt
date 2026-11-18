@@ -1,0 +1,24 @@
+can you walk me through your most challenging project and what you learned from it
+what is the difference between a process and a thread
+tell me about a time you disagreed with your manager
+how would you design a rate limiter for an api that serves ten thousand requests per second
+why do you want to work at our company
+what is your experience with python and typescript
+describe how a hash map handles collisions
+we have a budget of forty five thousand dollars for the first quarter
+our revenue grew by twenty three percent last year
+how do you prioritize when everything is urgent
+explain the cap theorem in simple terms
+where do you see yourself in five years
+i worked on a quantum key distribution simulation at algoma university
+the deadline is november eighteenth at three pm toronto time
+what is the time complexity of binary search
+could you give me an example of using react hooks
+our team uses kubernetes and postgres in production
+how do you handle conflict on a team
+what would you do in your first ninety days
+the meeting is scheduled for thursday at two thirty
+tell me about yourself
+what are your biggest strengths and weaknesses
+can you explain how transformers use attention
+do you have any questions for us

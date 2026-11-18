@@ -8,3 +8,6 @@ coverage/
 .env
 .env.*
 *.tsbuildinfo
+bench/audio/
+bench/results/
+bench/real/
