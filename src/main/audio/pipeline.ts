@@ -48,6 +48,7 @@ export class AudioPipeline {
   private levelTimer: ReturnType<typeof setInterval> | null = null
   private retryCount = 0
   private lastControl = ''
+  private lastModel = ''
   readonly transcript = new TranscriptBuffer()
   readonly asr: AsrService
 
@@ -87,6 +88,7 @@ export class AudioPipeline {
   }
 
   async start(): Promise<void> {
+    this.lastModel = this.options.getSettings().asrModel
     this.installSessionHandlers()
     ipcMain.on('audio:chunk', this.onChunk)
     this.asr.start()
@@ -99,6 +101,12 @@ export class AudioPipeline {
 
   /** Re-applies settings or panic changes to the capture page (no-op if nothing changed). */
   sync(): void {
+    // A different speech model: reload the engine with it.
+    const model = this.options.getSettings().asrModel
+    if (this.lastModel !== '' && model !== this.lastModel) {
+      this.lastModel = model
+      this.asr.retry()
+    }
     const control = this.control()
     const key = JSON.stringify(control)
     if (key === this.lastControl) return

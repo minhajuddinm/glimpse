@@ -68,7 +68,9 @@ export function CompanionPage() {
                 </div>
               ))}
               <p className="text-xs text-white/45">
-                Treat these links like a password: anyone on your network with one can read the transcript.
+                Treat these links like a password: anyone on your network with one can read the transcript. The first time you
+                allow other devices, Windows asks whether Glimpse (shown as &quot;Electron&quot;) may use the network; allow private
+                networks for your phone to connect.
               </p>
               <Button tone="ghost" onClick={() => void window.glimpse.invoke('companion:regenerate', null).then(setInfo)}>
                 New access code (old links stop working)
