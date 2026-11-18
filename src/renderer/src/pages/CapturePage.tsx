@@ -4,11 +4,13 @@ import {
   CaptureAppSchema,
   type CaptureApp,
   type LiveMode,
+  type LiveStatus,
   type MatrixRow,
   type OverlayState,
   type RemoteInfo,
   type SelfTestResult
 } from '../../../shared/capture'
+import { liveView } from '../../../shared/live'
 import { errorMessage, subscribe } from '../ipc'
 import { Badge, Button, Card, ErrorBanner } from '../ui'
 
@@ -172,47 +174,64 @@ function SelfTestCard() {
 
 function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
   const [duration, setDuration] = useState<number>(60)
-  const [endsAt, setEndsAt] = useState<number | null>(null)
-  const [mode, setMode] = useState<LiveMode | null>(null)
+  const [status, setStatus] = useState<LiveStatus>({ endsAt: null, mode: null })
   const [now, setNow] = useState(() => Date.now())
   const [app, setApp] = useState<CaptureApp>('Zoom')
   const [visible, setVisible] = useState<boolean | null>(null)
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(
-    () =>
-      subscribe('live:status', (status) => {
-        setEndsAt(status.endsAt)
-        setMode(status.mode)
-      }),
-    []
-  )
+  // Ask main for the truth on mount and whenever the window regains focus, so a lost event cannot leave the card stuck.
+  useEffect(() => {
+    const refresh = (): void => {
+      void window.glimpse.invoke('live:get', null).then((current) => {
+        setStatus(current)
+        setNow(Date.now())
+      })
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    const unsubscribe = subscribe('live:status', setStatus)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      unsubscribe()
+    }
+  }, [])
 
   useEffect(() => {
-    if (endsAt === null) return
+    if (status.endsAt === null) return
     const timer = setInterval(() => {
       setNow(Date.now())
     }, 500)
     return () => {
       clearInterval(timer)
     }
-  }, [endsAt])
+  }, [status.endsAt])
 
-  const secondsLeft = endsAt === null ? 0 : Math.max(0, Math.ceil((endsAt - now) / 1000))
-  const running = endsAt !== null
+  // Derived from the end time as well as the events: once the time has passed the card is idle again.
+  const { running, secondsLeft, mode } = liveView(status, now)
 
   const begin = async (kind: LiveMode): Promise<void> => {
     setError(null)
     try {
-      const status =
+      const next =
         kind === 'control'
           ? await window.glimpse.invoke('live:control', { seconds: 5 })
           : await window.glimpse.invoke('live:start', { seconds: duration })
-      setEndsAt(status.endsAt)
-      setMode(status.mode)
+      setStatus(next)
       setNow(Date.now())
     } catch (caught) {
+      setError(errorMessage(caught))
+    }
+  }
+
+  const stop = async (): Promise<void> => {
+    setError(null)
+    try {
+      setStatus(await window.glimpse.invoke('live:stop', null))
+    } catch (caught) {
+      // Even if stopping failed on the main side, do not leave the buttons disabled.
+      setStatus({ endsAt: null, mode: null })
       setError(errorMessage(caught))
     }
   }
@@ -273,7 +292,7 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
             <Badge tone={mode === 'control' ? 'bad' : 'warn'}>
               {mode === 'control' ? 'Control: visible to recorders' : 'Protected pattern on'} · {secondsLeft}s
             </Badge>
-            <Button tone="ghost" onClick={() => void window.glimpse.invoke('live:stop', null)}>
+            <Button tone="ghost" onClick={() => void stop()}>
               Stop
             </Button>
           </>

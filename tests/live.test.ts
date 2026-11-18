@@ -8,6 +8,7 @@ class FakeOverlay implements LiveOverlay {
   canary = false
   visible = false
   readonly log: string[] = []
+  hidden = false
 
   state(): OverlayState {
     return {
@@ -31,6 +32,12 @@ class FakeOverlay implements LiveOverlay {
   show(): void {
     this.visible = true
     this.log.push('show')
+  }
+
+  hide(): void {
+    this.visible = false
+    this.hidden = true
+    this.log.push('hide')
   }
 
   setCanary(on: boolean): Promise<void> {
@@ -115,5 +122,72 @@ describe('LiveSession', () => {
     const { overlay, session } = setup()
     await session.stop()
     expect(overlay.log).toEqual([])
+  })
+})
+
+describe('LiveSession when the overlay misbehaves', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('still reports the session as ended if clearing the pattern throws', async () => {
+    const overlay = new FakeOverlay()
+    const statuses: LiveStatus[] = []
+    const session = new LiveSession(overlay, (status) => statuses.push(status))
+    await session.start(30)
+
+    overlay.setCanary = () => Promise.reject(new Error('overlay window is gone'))
+    await expect(session.stop()).rejects.toThrow(/gone/)
+
+    expect(session.status()).toEqual({ endsAt: null, mode: null })
+    expect(statuses.at(-1)).toEqual({ endsAt: null, mode: null })
+  })
+
+  it('still clears the pattern if restoring protection throws, and reports the end', async () => {
+    const overlay = new FakeOverlay()
+    const statuses: LiveStatus[] = []
+    const session = new LiveSession(overlay, (status) => statuses.push(status))
+    await session.control(5)
+
+    overlay.setProtection = () => Promise.reject(new Error('koffi failed'))
+    await expect(session.stop()).rejects.toThrow(/koffi/)
+
+    expect(overlay.canary).toBe(false)
+    expect(statuses.at(-1)).toEqual({ endsAt: null, mode: null })
+  })
+
+  it('hides the overlay if protection cannot be restored after a control step', async () => {
+    const overlay = new FakeOverlay()
+    const session = new LiveSession(overlay, () => undefined)
+    await session.control(5)
+
+    overlay.setProtection = () => Promise.reject(new Error('koffi failed'))
+    await expect(session.stop()).rejects.toThrow(/koffi/)
+
+    // An unprotected overlay must never be left on screen.
+    expect(overlay.hidden).toBe(true)
+    expect(overlay.visible).toBe(false)
+  })
+
+  it('a timer-driven stop that fails does not become an unhandled rejection', async () => {
+    const overlay = new FakeOverlay()
+    const session = new LiveSession(overlay, () => undefined)
+    await session.start(5)
+    overlay.setCanary = () => Promise.reject(new Error('boom'))
+
+    const unhandled: unknown[] = []
+    const listener = (reason: unknown): void => {
+      unhandled.push(reason)
+    }
+    process.on('unhandledRejection', listener)
+    await vi.advanceTimersByTimeAsync(5_000)
+    await vi.advanceTimersByTimeAsync(10)
+    process.off('unhandledRejection', listener)
+
+    expect(unhandled).toEqual([])
+    expect(session.status()).toEqual({ endsAt: null, mode: null })
   })
 })

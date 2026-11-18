@@ -111,5 +111,9 @@ export const LiveModeSchema = z.enum(['protected', 'control'])
 export type LiveMode = z.infer<typeof LiveModeSchema>
 
 /** mode 'control' means the pattern is shown with protection OFF so a recorder is expected to see it. */
-export const LiveStatusSchema = z.object({ endsAt: z.number().nullable(), mode: LiveModeSchema.nullable() })
+export const LiveStatusSchema = z.object({
+  endsAt: z.number().nullable(),
+  /** Defaults to null so a payload from an older main process (no mode field) is still accepted. */
+  mode: LiveModeSchema.nullable().default(null)
+})
 export type LiveStatus = z.infer<typeof LiveStatusSchema>

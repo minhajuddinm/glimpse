@@ -133,7 +133,9 @@ async function startNormal(): Promise<void> {
     hideTray,
     showTray,
     stopLive: () => {
-      void live.stop()
+      live.stop().catch((error: unknown) => {
+        console.error('[live] stop failed', error)
+      })
     }
   })
 

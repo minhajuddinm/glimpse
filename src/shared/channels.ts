@@ -19,6 +19,7 @@ export const INVOKE_CHANNELS = [
   'selftest:last',
   'live:start',
   'live:control',
+  'live:get',
   'live:stop',
   'env:remote',
   'live:report',

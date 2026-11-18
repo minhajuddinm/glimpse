@@ -85,6 +85,7 @@ export function registerAllHandlers(ctx: HandlerContext): void {
 
   registerHandler('live:start', isTrustedSender, ({ seconds }) => live.start(seconds))
   registerHandler('live:control', isTrustedSender, ({ seconds }) => live.control(seconds))
+  registerHandler('live:get', isTrustedSender, () => live.status())
   registerHandler('live:stop', isTrustedSender, () => live.stop())
   registerHandler('env:remote', isTrustedSender, () => detectRemoteViewers())
 
