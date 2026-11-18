@@ -32,7 +32,20 @@ export const INVOKE_CHANNELS = [
   'transcript:get',
   'transcript:clear',
   'companion:info',
-  'companion:regenerate'
+  'companion:regenerate',
+  'keys:status',
+  'keys:set',
+  'context:get',
+  'context:set',
+  'answers:get',
+  'answers:ask',
+  'answers:action',
+  'answers:retry',
+  'kb:status',
+  'kb:add-files',
+  'kb:open-folder',
+  'kb:reindex',
+  'kb:search'
 ] as const satisfies readonly InvokeChannel[]
 
 export const EVENT_CHANNELS = [
@@ -44,5 +57,7 @@ export const EVENT_CHANNELS = [
   'audio:status',
   'audio:levels',
   'transcript:update',
-  'companion:info'
+  'companion:info',
+  'answers:update',
+  'kb:status'
 ] as const satisfies readonly EventChannel[]

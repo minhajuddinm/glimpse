@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { AnswersPage } from './pages/AnswersPage'
 import { AudioPage } from './pages/AudioPage'
+import { NotesPage } from './pages/NotesPage'
 import { CapturePage } from './pages/CapturePage'
 import { CompanionPage } from './pages/CompanionPage'
 import { GeneralPage } from './pages/GeneralPage'
@@ -9,6 +11,8 @@ import { ErrorBanner } from './ui'
 
 const TABS = [
   { id: 'general', label: 'General' },
+  { id: 'answers', label: 'Answers' },
+  { id: 'notes', label: 'Notes' },
   { id: 'audio', label: 'Audio' },
   { id: 'companion', label: 'Companion' },
   { id: 'capture', label: 'Capture test' },
@@ -58,6 +62,8 @@ export function App() {
       {error !== null && <ErrorBanner message={error} />}
 
       {tab === 'general' && <GeneralPage />}
+      {tab === 'answers' && <AnswersPage />}
+      {tab === 'notes' && <NotesPage />}
       {tab === 'audio' && <AudioPage />}
       {tab === 'companion' && <CompanionPage />}
       {tab === 'capture' && <CapturePage />}

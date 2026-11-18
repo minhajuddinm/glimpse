@@ -33,3 +33,11 @@ One line per deviation from BRIEF v2, with the reason.
 | 2026-11-18 | Companion page | Off by default. A local HTTP server (port 47823, falls back to a free port) serves an empty page; data needs a random 24-character code in the URL, compared in constant time, with lock-out after 20 wrong codes a minute per address. "Allow other devices" switches from 127.0.0.1 to all interfaces (LAN and Tailscale). Live updates use server-sent events. | The owner views the PC through Moonlight, where the overlay is invisible by design; the companion page shows the transcript (and later the answers) on a second device. |
 | 2026-11-18 | Settings window | Not protected from capture. Closing it keeps Glimpse running in the tray, with a one-time notification saying so. | Owner's decision. |
 | 2026-11-18 | Diagnostics | `GLIMPSE_AUDIO_DUMP=<folder>` records exactly what the speech worker receives; `node scripts/replay-dump.mts <folder>` replays it with a per-chunk VAD and text trace. | This is how the split-sentence bug was found. |
+
+## Pillar C — answers and notes
+- **Notes folder at the app base** (`<app>/notes`, or next to `Glimpse.exe` when packaged), as the user asked. "Add files…" copies files there; the folder is watched and git-ignored. Not a user-picked folder list as originally planned.
+- **Hybrid ranking = cosine similarity + small keyword bonus**, not reciprocal rank fusion: RRF let a shared keyword outvote meaning (G11 4/5 → 5/5). Instant prepared-answer threshold calibrated to 0.57 on bge-small (plan said 0.85, which no paraphrase reached).
+- **node:sqlite FTS5** instead of better-sqlite3 (no native build tools on this machine); `fs.watch` recursive instead of chokidar.
+- **Keys**: `safeStorage` async API (DPAPI); decrypted keys held in main memory only, never sent to a renderer.
+- **Sonnet "elaborate"** uses the server-side fallback beta so a classifier decline still returns an answer.
+- **Groq is text-only**: screenshot questions need the Anthropic key.

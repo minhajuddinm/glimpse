@@ -12,3 +12,5 @@ bench/audio/
 bench/results/
 bench/real/
 *.jfif
+# Your personal notes: never committed.
+notes/

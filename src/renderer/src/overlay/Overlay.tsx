@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { OverlayState } from '../../../shared/capture'
 import type { Settings } from '../../../shared/settings'
+import type { AnswersSnapshot } from '../../../shared/answers'
 import type { TranscriptSnapshot } from '../../../shared/transcript'
+import { AnswerCards } from './AnswerCards'
 import { subscribe } from '../ipc'
 
 interface Paint {
@@ -32,7 +34,7 @@ export function Overlay() {
   const [state, setState] = useState<OverlayState | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [paint, setPaint] = useState<Paint>({ on: false, seq: 0 })
-  const [clicks, setClicks] = useState(0)
+  const [answers, setAnswers] = useState<AnswersSnapshot>({ answers: [] })
   const [transcript, setTranscript] = useState<TranscriptSnapshot>({ segments: [], partials: { them: '', you: '' } })
   const headerRef = useRef<HTMLDivElement>(null)
 
@@ -40,10 +42,12 @@ export function Overlay() {
     void window.glimpse.invoke('overlay:state', null).then(setState)
     void window.glimpse.invoke('settings:get', null).then(setSettings)
     void window.glimpse.invoke('transcript:get', null).then(setTranscript)
+    void window.glimpse.invoke('answers:get', null).then(setAnswers)
     const unsubscribers = [
       subscribe('overlay:state', setState),
       subscribe('settings:changed', setSettings),
       subscribe('transcript:update', setTranscript),
+      subscribe('answers:update', setAnswers),
       subscribe('overlay:canary', ({ on }) => {
         setPaint((previous) => ({ on, seq: previous.seq + 1 }))
       })
@@ -115,37 +119,32 @@ export function Overlay() {
             </button>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">
-            <ol className="min-h-0 flex-1 space-y-1.5 overflow-hidden text-[13px] leading-relaxed">
-              {transcript.segments.length === 0 && transcript.partials.them === '' && transcript.partials.you === '' && (
-                <li className="text-white/40">Listening… the conversation appears here. This panel is excluded from screen capture.</li>
+          <div className="flex min-h-0 flex-1 flex-col gap-3 px-3.5 py-3.5">
+            <div className="min-h-0 flex-[3] overflow-hidden">
+              {answers.answers.filter((answer) => answer.status !== 'cancelled').length === 0 ? (
+                <p className="px-0.5 text-[12px] leading-relaxed text-white/35">
+                  Answers appear here when the other side asks something
+                  {hotkeys !== undefined ? ` — or press ${hotkeys.answerNow} to answer the last question` : ''}. This panel is excluded from screen capture.
+                </p>
+              ) : (
+                <AnswerCards answers={answers.answers} regenerateKey={hotkeys?.regenerate ?? ''} />
               )}
-              {transcript.segments.slice(-8).map((segment) => (
-                <li key={segment.id} className={segment.source === 'you' ? 'text-right text-white/45' : 'text-white/65'}>
-                  <span className={`mr-1.5 text-[10px] font-semibold ${segment.source === 'you' ? 'text-emerald-300/80' : 'text-violet-300/90'}`}>
+            </div>
+            <ol className="min-h-0 flex-[2] space-y-1 overflow-hidden border-t border-white/5 pt-2.5 text-[12px] leading-relaxed">
+              {transcript.segments.length === 0 && transcript.partials.them === '' && transcript.partials.you === '' && (
+                <li className="text-white/30">Listening…</li>
+              )}
+              {transcript.segments.slice(-6).map((segment) => (
+                <li key={segment.id} className={segment.source === 'you' ? 'text-right text-white/35' : 'text-white/50'}>
+                  <span className={`mr-1.5 text-[9px] font-semibold ${segment.source === 'you' ? 'text-emerald-300/70' : 'text-violet-300/80'}`}>
                     {segment.source === 'you' ? 'YOU' : 'THEM'}
                   </span>
                   {segment.text}
                 </li>
               ))}
-              {transcript.partials.them !== '' && <li className="text-white/90">{transcript.partials.them}…</li>}
-              {transcript.partials.you !== '' && <li className="text-right text-white/50">{transcript.partials.you}…</li>}
+              {transcript.partials.them !== '' && <li className="text-white/75">{transcript.partials.them}…</li>}
+              {transcript.partials.you !== '' && <li className="text-right text-white/40">{transcript.partials.you}…</li>}
             </ol>
-            <div className="mt-auto rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="mb-2 text-[10px] font-medium tracking-wider text-white/40">CLICK TEST</div>
-              <button
-                type="button"
-                className="rounded-md bg-violet/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet"
-                onClick={() => {
-                  setClicks((count) => count + 1)
-                }}
-              >
-                Clicked {clicks} {clicks === 1 ? 'time' : 'times'}
-              </button>
-              <p className="mt-2 text-[11px] text-white/35">
-                With click-through on, this click should land on the app behind the panel.
-              </p>
-            </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 px-4 py-2.5 text-[10px] text-white/45">
@@ -153,6 +152,12 @@ export function Overlay() {
               <>
                 <span className="flex items-center gap-1.5">
                   <Kbd>{hotkeys.toggleOverlay}</Kbd> show / hide
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Kbd>{hotkeys.answerNow}</Kbd> answer
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Kbd>{hotkeys.elaborate}</Kbd> more
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Kbd>{hotkeys.toggleClickThrough}</Kbd> click-through

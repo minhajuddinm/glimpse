@@ -1,5 +1,6 @@
 import QRCode from 'qrcode'
 import type { Settings } from '../../shared/settings'
+import type { AnswersSnapshot } from '../../shared/answers'
 import type { CompanionInfo, TranscriptSnapshot } from '../../shared/transcript'
 import { CompanionServer, DEFAULT_PORT, newToken } from './server'
 
@@ -9,6 +10,7 @@ export interface CompanionManagerOptions {
   readonly setToken: (token: string) => void
   readonly logoFile: string
   readonly snapshot: () => TranscriptSnapshot
+  readonly answers: () => AnswersSnapshot
   readonly onInfo: (info: CompanionInfo) => void
 }
 
@@ -42,7 +44,8 @@ export class CompanionManager {
         lan: companionLan,
         port: DEFAULT_PORT,
         logoFile: this.options.logoFile,
-        snapshot: this.options.snapshot
+        snapshot: this.options.snapshot,
+        answers: this.options.answers
       })
       try {
         await server.start()
@@ -68,6 +71,10 @@ export class CompanionManager {
 
   publish(snapshot: TranscriptSnapshot): void {
     this.server?.publish(snapshot)
+  }
+
+  publishAnswers(snapshot: AnswersSnapshot): void {
+    this.server?.publishAnswers(snapshot)
   }
 
   async info(): Promise<CompanionInfo> {

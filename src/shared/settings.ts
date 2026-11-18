@@ -20,7 +20,13 @@ export const SettingsSchema = z.object({
   /** Serve the companion page (transcript, later answers) to a second device. */
   companionEnabled: z.boolean(),
   /** Listen on the network (LAN / Tailscale) instead of only this PC. */
-  companionLan: z.boolean()
+  companionLan: z.boolean(),
+  /** Answer questions from the other side automatically (C1). */
+  autoAnswer: z.boolean(),
+  /** Check factual claims (numbers, dates, names) from the other side. */
+  factCheck: z.boolean(),
+  /** Which answer provider to use; auto prefers Anthropic, then Groq. */
+  llmProvider: z.enum(['auto', 'anthropic', 'groq'])
 })
 export type Settings = z.infer<typeof SettingsSchema>
 export type SettingKey = keyof Settings
@@ -43,6 +49,9 @@ export const DEFAULT_SETTINGS: Settings = {
   asrModel: 'kroko-en',
   companionEnabled: false,
   companionLan: false,
+  autoAnswer: true,
+  factCheck: false,
+  llmProvider: 'auto',
   hotkeys: DEFAULT_HOTKEYS
 }
 

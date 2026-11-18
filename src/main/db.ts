@@ -18,7 +18,26 @@ const MIGRATIONS: readonly string[] = [
      notes         TEXT NOT NULL,
      tested_at     TEXT NOT NULL,
      windows_build INTEGER
-   ) STRICT;`
+   ) STRICT;`,
+  `CREATE TABLE kb_files (
+     path       TEXT PRIMARY KEY,
+     hash       TEXT NOT NULL,
+     chunks     INTEGER NOT NULL,
+     qa         INTEGER NOT NULL,
+     error      TEXT,
+     indexed_at INTEGER NOT NULL
+   ) STRICT;
+   CREATE TABLE kb_chunks (
+     id       INTEGER PRIMARY KEY,
+     file     TEXT NOT NULL,
+     kind     TEXT NOT NULL CHECK (kind IN ('qa', 'text')),
+     question TEXT,
+     text     TEXT NOT NULL,
+     vec      BLOB,
+     qvec     BLOB
+   ) STRICT;
+   CREATE INDEX kb_chunks_file ON kb_chunks(file);
+   CREATE VIRTUAL TABLE kb_fts USING fts5(question, text, tokenize = 'porter unicode61');`
 ]
 
 export function openDatabase(file: string): Db {

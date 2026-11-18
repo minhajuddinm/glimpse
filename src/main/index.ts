@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { release, tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { Notification, app, globalShortcut, type Tray } from 'electron'
 import { broadcast } from './broadcast'
 import { isHeadless, parseCli } from './cli'
@@ -18,6 +18,15 @@ import { SettingsStore } from './settingsStore'
 import { createTray } from './tray'
 import { sleep } from './util'
 import { showSettingsWindow } from './windows/settingsWindow'
+import { HOTKEY_ACTIONS, type HotkeyAction } from '../shared/accelerator'
+import { readContext, registerAnswerHandlers, screenshotJpeg } from './answerHandlers'
+import { anthropicProvider, groqProvider, type LlmProvider } from './answers/llm'
+import { AnswerScheduler } from './answers/scheduler'
+import { AnswerService } from './answers/service'
+import { loadEmbedder } from './kb/embedder'
+import { KnowledgeBase } from './kb/manager'
+import { KbStore } from './kb/store'
+import { SecretStore } from './secrets'
 
 const cli = parseCli(process.argv)
 const headless = isHeadless(cli)
@@ -53,7 +62,7 @@ async function startHeadless(): Promise<void> {
     registerAllHandlers({
       settings,
       overlay,
-      hotkeys: new HotkeyManager(globalShortcut, { toggleOverlay: noop, toggleClickThrough: noop, panicHide: noop }),
+      hotkeys: new HotkeyManager(globalShortcut, Object.fromEntries(HOTKEY_ACTIONS.map((action) => [action, noop])) as Record<HotkeyAction, () => void>),
       captureStore: new CaptureStore(db),
       live: new LiveSession(overlay, noop),
       windowsBuild: windowsBuild(),
@@ -62,6 +71,7 @@ async function startHeadless(): Promise<void> {
       companion: null,
       onSettingsChanged: noop
     })
+    registerAnswerHandlers({ settings, answers: null, kb: null, secrets: null, onKeysChanged: noop })
     await overlay.create()
     overlay.show()
 
@@ -144,8 +154,47 @@ async function startNormal(): Promise<void> {
     }
   })
 
+  // Pillar C: notes folder, API keys and the answer service.
+  const secrets = new SecretStore(settings)
+  const notesFolder = app.isPackaged ? join(dirname(app.getPath('exe')), 'notes') : join(app.getAppPath(), 'notes')
+  const kb = new KnowledgeBase({
+    folder: notesFolder,
+    store: new KbStore(db),
+    loadEmbedder: () => loadEmbedder(join(app.getAppPath(), 'models')),
+    onStatus: (status) => {
+      broadcast('kb:status', status)
+    }
+  })
+  let cachedProvider: { key: string; provider: LlmProvider } | null = null
+  const provider = (): LlmProvider | null => {
+    const choice = settings.get().llmProvider
+    const anthropicKey = choice === 'groq' ? null : secrets.get('anthropic')
+    const groqKey = choice === 'anthropic' ? null : secrets.get('groq')
+    const key = anthropicKey !== null ? `a:${anthropicKey}` : groqKey !== null ? `g:${groqKey}` : null
+    if (key === null) return null
+    if (cachedProvider?.key !== key) {
+      cachedProvider = { key, provider: anthropicKey !== null ? anthropicProvider(anthropicKey) : groqProvider(groqKey ?? '') }
+    }
+    return cachedProvider.provider
+  }
   let companion: CompanionManager | null = null
+  const answers = new AnswerService({
+    scheduler: new AnswerScheduler(() => Date.now()),
+    search: (query) => kb.search(query),
+    provider,
+    settings: () => settings.get(),
+    context: () => readContext(settings),
+    transcript: () => pipeline.transcript.snapshot(),
+    emit: (snapshot) => {
+      broadcast('answers:update', snapshot)
+      companion?.publishAnswers(snapshot)
+    },
+    now: () => Date.now()
+  })
   const pipeline = new AudioPipeline({
+    onFinal: (segment) => {
+      answers.onSegment(segment)
+    },
     appRoot: app.getAppPath(),
     getSettings: () => settings.get(),
     isPanic: () => panic.captureMuted,
@@ -168,6 +217,7 @@ async function startNormal(): Promise<void> {
     },
     logoFile: join(app.getAppPath(), 'resources', 'icon.png'),
     snapshot: () => pipeline.transcript.snapshot(),
+    answers: () => answers.snapshot(),
     onInfo: (info) => {
       broadcast('companion:info', info)
     }
@@ -189,6 +239,37 @@ async function startNormal(): Promise<void> {
     },
     panicHide: () => {
       panic.toggle()
+    },
+    answerNow: () => {
+      void answers.ask()
+    },
+    elaborate: () => {
+      void answers.elaborate()
+    },
+    regenerate: () => {
+      void answers.regenerate()
+    },
+    screenshot: () => {
+      void screenshotJpeg().then((image) => {
+        if (image !== null) void answers.ask(undefined, 'answer', image)
+      })
+    },
+    toggleMic: () => {
+      const next = settings.update({ micMuted: !settings.get().micMuted })
+      pipeline.sync()
+      broadcast('settings:changed', next)
+    },
+    clearAnswers: () => {
+      answers.clear()
+    }
+  })
+  registerAnswerHandlers({
+    settings,
+    answers,
+    kb,
+    secrets,
+    onKeysChanged: () => {
+      cachedProvider = null
     }
   })
 
@@ -209,6 +290,8 @@ async function startNormal(): Promise<void> {
   })
 
   app.on('before-quit', () => {
+    kb.stop()
+    answers.clear()
     pipeline.stop()
     void companionManager.stop()
     hotkeys.dispose()
@@ -232,7 +315,11 @@ async function startNormal(): Promise<void> {
   showTray()
   overlay.show()
   showSettingsWindow()
+  await secrets.load()
   await pipeline.start()
+  void kb.init().catch((error: unknown) => {
+    console.error('[notes] could not start', error)
+  })
   await companionManager.sync()
 }
 

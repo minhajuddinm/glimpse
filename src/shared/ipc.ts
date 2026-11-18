@@ -19,6 +19,7 @@ import {
   SourceStatusSchema,
   TranscriptSnapshotSchema
 } from './transcript'
+import { AnswersSnapshotSchema, KbHitSchema, KbStatusSchema, KeyStatusSchema } from './answers'
 
 /** What the hidden capture page should be doing. `retry` increments when the user presses Retry. */
 export const CaptureControlSchema = z.object({
@@ -85,6 +86,25 @@ export const ipcContract = {
   'transcript:clear': { request: z.null(), response: z.null() },
   'companion:info': { request: z.null(), response: CompanionInfoSchema },
   'companion:regenerate': { request: z.null(), response: CompanionInfoSchema },
+  'keys:status': { request: z.null(), response: KeyStatusSchema },
+  'keys:set': { request: z.object({ provider: z.enum(['anthropic', 'groq']), key: z.string().max(400) }), response: KeyStatusSchema },
+  'context:get': { request: z.null(), response: z.string() },
+  'context:set': { request: z.string().max(20_000), response: z.null() },
+  'answers:get': { request: z.null(), response: AnswersSnapshotSchema },
+  'answers:ask': { request: z.object({ question: z.string().max(500) }), response: z.null() },
+  'answers:action': {
+    request: z.object({ action: z.enum(['answer-now', 'elaborate', 'regenerate', 'screenshot', 'clear']) }),
+    response: z.null()
+  },
+  'answers:retry': { request: z.object({ id: z.number().int() }), response: z.null() },
+  'kb:status': { request: z.null(), response: KbStatusSchema },
+  'kb:add-files': {
+    request: z.null(),
+    response: z.object({ added: z.array(z.string()), skipped: z.array(z.string()), status: KbStatusSchema })
+  },
+  'kb:open-folder': { request: z.null(), response: z.null() },
+  'kb:reindex': { request: z.null(), response: KbStatusSchema },
+  'kb:search': { request: z.object({ query: z.string().max(500) }), response: z.array(KbHitSchema) },
   'live:matrix': { request: z.null(), response: z.array(MatrixRowSchema) }
 } as const satisfies Record<string, { request: z.ZodType; response: z.ZodType }>
 
@@ -98,7 +118,9 @@ export const ipcEvents = {
   'audio:status': AudioStatusSchema,
   'audio:levels': AudioLevelsSchema,
   'transcript:update': TranscriptSnapshotSchema,
-  'companion:info': CompanionInfoSchema
+  'companion:info': CompanionInfoSchema,
+  'answers:update': AnswersSnapshotSchema,
+  'kb:status': KbStatusSchema
 } as const satisfies Record<string, z.ZodType>
 
 export type IpcContract = typeof ipcContract

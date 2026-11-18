@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_HOTKEYS } from '../src/shared/accelerator'
+import { DEFAULT_HOTKEYS, HOTKEY_ACTIONS, type HotkeyAction } from '../src/shared/accelerator'
 import { HotkeyManager, type ShortcutRegistry } from '../src/main/hotkeys'
 
 class FakeRegistry implements ShortcutRegistry {
@@ -27,11 +27,15 @@ class FakeRegistry implements ShortcutRegistry {
 function setup() {
   const registry = new FakeRegistry()
   const calls: string[] = []
-  const manager = new HotkeyManager(registry, {
-    toggleOverlay: () => calls.push('toggleOverlay'),
-    toggleClickThrough: () => calls.push('toggleClickThrough'),
-    panicHide: () => calls.push('panicHide')
-  })
+  const handlers = Object.fromEntries(
+    HOTKEY_ACTIONS.map((action) => [
+      action,
+      () => {
+        calls.push(action)
+      }
+    ])
+  ) as Record<HotkeyAction, () => void>
+  const manager = new HotkeyManager(registry, handlers)
   return { registry, calls, manager }
 }
 

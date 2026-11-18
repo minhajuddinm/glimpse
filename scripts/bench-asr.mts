@@ -219,7 +219,7 @@ function main(): void {
   )
   const rows: Record<string, unknown>[] = []
   for (const model of registry) {
-    if (model.family === 'vad' || (wanted.length > 0 && !wanted.includes(model.id))) continue
+    if (model.family === 'vad' || model.family === 'embedding' || (wanted.length > 0 && !wanted.includes(model.id))) continue
     const dir = join(root, 'models', model.dir)
     if (!existsSync(dir)) {
       console.log(`- ${model.id}: not installed (npm run fetch-models -- --only ${model.id})`)

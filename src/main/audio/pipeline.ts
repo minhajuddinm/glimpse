@@ -8,6 +8,7 @@ import {
   type AudioDevice,
   type AudioLevels,
   type AudioStatus,
+  type Segment,
   type Source,
   type SourceStatus,
   type TranscriptSnapshot
@@ -33,6 +34,8 @@ export interface PipelineOptions {
   readonly broadcastStatus: (status: AudioStatus) => void
   readonly broadcastLevels: (levels: AudioLevels) => void
   readonly broadcastTranscript: (snapshot: TranscriptSnapshot) => void
+  /** Each finished (non-echo) line, for question detection. */
+  readonly onFinal?: ((segment: Segment) => void) | undefined
 }
 
 /**
@@ -159,8 +162,9 @@ export class AudioPipeline {
     if (event.kind === 'partial') {
       this.transcript.setPartial(event.source, event.text)
     } else {
-      this.transcript.addFinal(event.source, event.text, event.latencyMs)
+      const segment = this.transcript.addFinal(event.source, event.text, event.latencyMs)
       this.emitStatus()
+      if (segment !== null) this.options.onFinal?.(segment)
     }
     this.options.broadcastTranscript(this.transcript.snapshot())
   }

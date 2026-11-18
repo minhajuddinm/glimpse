@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 async function start(token = 'secret-token-123'): Promise<string> {
-  server = new CompanionServer({ token, lan: false, port: 0, logoFile: null, snapshot: () => SNAPSHOT })
+  server = new CompanionServer({ token, lan: false, port: 0, logoFile: null, snapshot: () => SNAPSHOT, answers: () => ({ answers: [] }) })
   await server.start()
   return `http://127.0.0.1:${String(server.port)}`
 }

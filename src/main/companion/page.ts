@@ -19,7 +19,7 @@ export const COMPANION_HTML = `<!doctype html>
 <main>
   <section class="answers">
     <h2>Answers</h2>
-    <p class="muted" id="answers">Answers will appear here once question detection is switched on.</p>
+    <div id="answers"><p class="muted">Answers appear here when the other side asks something.</p></div>
   </section>
   <section>
     <h2>Live transcript</h2>
@@ -53,7 +53,14 @@ li:last-child{border-bottom:0}
 .you{text-align:right}
 .you .who{color:#6ee7b7}
 .partial{margin:6px 0 0;color:var(--muted);font-style:italic;min-height:0}
-.partial:empty{display:none}`
+.partial:empty{display:none}
+.card{padding:10px 0;border-bottom:1px solid var(--line)}
+.card:last-child{border-bottom:0}
+.card .q{font-size:12px;color:var(--muted);margin-bottom:4px}
+.card .t{white-space:pre-wrap;font-size:18px;line-height:1.45}
+.card.old .t{font-size:15px;color:var(--muted)}
+.card .meta{font-size:11px;color:var(--muted);margin-top:4px}
+.card.error .t{color:#fca5a5;font-size:14px}`
 
 export const COMPANION_JS = `(function () {
   var token = new URLSearchParams(location.search).get('t') || ''
@@ -79,9 +86,36 @@ export const COMPANION_JS = `(function () {
     partialYou.textContent = snapshot.partials.you ? 'You: ' + snapshot.partials.you + '…' : ''
     if (nearBottom) window.scrollTo(0, document.body.scrollHeight)
   }
+  var answersBox = document.getElementById('answers')
+  var LABELS = { answer: 'Answer', 'talking-points': 'Talking points', 'fact-check': 'Fact check', screen: 'From your screen', elaborate: 'More detail' }
+  function card(answer, index) {
+    var el = document.createElement('div')
+    el.className = 'card' + (index > 0 ? ' old' : '') + (answer.status === 'error' ? ' error' : '')
+    var q = document.createElement('div')
+    q.className = 'q'
+    q.textContent = (LABELS[answer.kind] || 'Answer') + (answer.question ? ' · ' + answer.question : '')
+    var t = document.createElement('div')
+    t.className = 't'
+    t.textContent = answer.status === 'error' ? (answer.error || 'Something went wrong') : (answer.text || (answer.status === 'thinking' ? 'Thinking…' : ''))
+    el.appendChild(q)
+    el.appendChild(t)
+    if (answer.sources && answer.sources.length) {
+      var m = document.createElement('div')
+      m.className = 'meta'
+      m.textContent = 'From your notes: ' + answer.sources.join(', ')
+      el.appendChild(m)
+    }
+    return el
+  }
+  function renderAnswers(snapshot) {
+    var visible = snapshot.answers.filter(function (a) { return a.status !== 'cancelled' }).slice(0, 5)
+    if (visible.length === 0) return
+    answersBox.replaceChildren.apply(answersBox, visible.map(card))
+  }
   if (!token) { setStatus('missing access code', 'down'); return }
   var source = new EventSource('/events?t=' + encodeURIComponent(token))
   source.addEventListener('transcript', function (event) { render(JSON.parse(event.data)); setStatus('live', 'live') })
+  source.addEventListener('answers', function (event) { renderAnswers(JSON.parse(event.data)) })
   source.onopen = function () { setStatus('live', 'live') }
   source.onerror = function () { setStatus('reconnecting…', 'down') }
 })()`

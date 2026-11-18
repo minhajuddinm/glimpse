@@ -11,6 +11,8 @@
     "src/preload/**/*.ts",
     "src/shared/**/*.ts",
     "tests/**/*.ts",
+    "bench/**/*.ts",
+    "vitest.bench.mts",
     "scripts/**/*.mts",
     "electron.vite.config.mts",
     "vitest.config.mts"

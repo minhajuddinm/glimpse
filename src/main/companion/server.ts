@@ -2,6 +2,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { networkInterfaces } from 'node:os'
+import type { AnswersSnapshot } from '../../shared/answers'
 import type { TranscriptSnapshot } from '../../shared/transcript'
 import { COMPANION_CSS, COMPANION_HTML, COMPANION_JS } from './page'
 
@@ -47,6 +48,7 @@ export interface CompanionOptions {
   readonly port: number
   readonly logoFile: string | null
   readonly snapshot: () => TranscriptSnapshot
+  readonly answers: () => AnswersSnapshot
 }
 
 /**
@@ -121,6 +123,12 @@ export class CompanionServer {
     if (server !== null) await new Promise<void>((resolve) => server.close(() => { resolve() }))
   }
 
+  /** Pushes the latest answers to every connected device. */
+  publishAnswers(snapshot: AnswersSnapshot): void {
+    const frame = `event: answers\ndata: ${JSON.stringify(snapshot)}\n\n`
+    for (const client of this.clients) client.write(frame)
+  }
+
   /** Pushes the latest transcript to every connected device. */
   publish(snapshot: TranscriptSnapshot): void {
     const frame = `event: transcript\ndata: ${JSON.stringify(snapshot)}\n\n`
@@ -185,6 +193,7 @@ export class CompanionServer {
         }
         res.writeHead(200, { ...SECURITY_HEADERS, 'Content-Type': 'text/event-stream', Connection: 'keep-alive' })
         res.write(`event: transcript\ndata: ${JSON.stringify(this.options.snapshot())}\n\n`)
+        res.write(`event: answers\ndata: ${JSON.stringify(this.options.answers())}\n\n`)
         this.clients.add(res)
         req.on('close', () => {
           this.clients.delete(res)

@@ -24,7 +24,9 @@ const ModelSchema = z.object({
   bytes: z.number().int().positive(),
   sha256: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
   featureDim: z.number().int(),
-  family: z.enum(['zipformer', 'nemo-transducer', 'nemotron', 'vad']),
+  family: z.enum(['zipformer', 'nemo-transducer', 'nemotron', 'vad', 'embedding']),
+  /** Set for multi-file assets: each path is fetched from `${url}/${path}` and checked against its hash. */
+  files: z.array(z.object({ path: z.string(), bytes: z.number().int(), sha256: z.string().regex(/^[0-9a-f]{64}$/) })).optional(),
   /** Set for single-file assets that are not tar archives. */
   file: z.string().optional(),
   note: z.string()
@@ -77,6 +79,21 @@ async function install(model: z.infer<typeof ModelSchema>): Promise<void> {
   const target = join(modelsDir, model.dir)
   if (existsSync(target)) {
     console.log(`✓ ${model.id}: already installed`)
+    return
+  }
+  if (model.files !== undefined) {
+    for (const file of model.files) {
+      const destination = join(target, ...file.path.split('/'))
+      mkdirSync(join(destination, '..'), { recursive: true })
+      console.log(`↓ ${model.id}/${file.path}: ${(file.bytes / 1048576).toFixed(1)} MB`)
+      await download(`${model.url}/${file.path}`, destination, file.bytes)
+      const hash = await sha256Of(destination)
+      if (hash !== file.sha256) {
+        rmSync(target, { recursive: true, force: true })
+        throw new Error(`${model.id}/${file.path}: SHA-256 mismatch (expected ${file.sha256}, got ${hash}). Deleted.`)
+      }
+    }
+    console.log(`✓ ${model.id}: installed`)
     return
   }
   if (model.file !== undefined) {

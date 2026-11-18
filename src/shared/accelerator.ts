@@ -1,12 +1,28 @@
 import { z } from 'zod'
 
-export const HOTKEY_ACTIONS = ['toggleOverlay', 'toggleClickThrough', 'panicHide'] as const
+export const HOTKEY_ACTIONS = [
+  'toggleOverlay',
+  'toggleClickThrough',
+  'panicHide',
+  'answerNow',
+  'elaborate',
+  'regenerate',
+  'screenshot',
+  'toggleMic',
+  'clearAnswers'
+] as const
 export type HotkeyAction = (typeof HOTKEY_ACTIONS)[number]
 
 export const HOTKEY_LABELS: Record<HotkeyAction, string> = {
   toggleOverlay: 'Show / hide overlay',
   toggleClickThrough: 'Toggle click-through',
-  panicHide: 'Panic hide (hide everything, mute capture)'
+  panicHide: 'Panic hide (hide everything, mute capture)',
+  answerNow: 'Answer the last question now',
+  elaborate: 'Elaborate on the last answer',
+  regenerate: 'Regenerate the last answer',
+  screenshot: 'Answer from a screenshot of your screen',
+  toggleMic: 'Mute / unmute your microphone',
+  clearAnswers: 'Clear answers'
 }
 
 const MODIFIER_ORDER = ['Ctrl', 'Alt', 'Shift', 'Super'] as const
@@ -133,15 +149,28 @@ export function acceleratorFromKeyEvent(event: KeyEventLike): string | null {
   return normalizeAccelerator([...modifiers, key].join('+'))
 }
 
+export const DEFAULT_HOTKEYS = {
+  toggleOverlay: 'Ctrl+Alt+G',
+  toggleClickThrough: 'Ctrl+Alt+C',
+  panicHide: 'Ctrl+Alt+H',
+  answerNow: 'Ctrl+Alt+Enter',
+  elaborate: 'Ctrl+Alt+E',
+  regenerate: 'Ctrl+Alt+R',
+  screenshot: 'Ctrl+Alt+S',
+  toggleMic: 'Ctrl+Alt+M',
+  clearAnswers: 'Ctrl+Alt+X'
+} as const satisfies Record<HotkeyAction, string>
+
+/** Later actions have defaults so settings saved by an older version still parse. */
 export const HotkeysSchema = z.object({
   toggleOverlay: AcceleratorSchema,
   toggleClickThrough: AcceleratorSchema,
-  panicHide: AcceleratorSchema
+  panicHide: AcceleratorSchema,
+  answerNow: AcceleratorSchema.default(DEFAULT_HOTKEYS.answerNow),
+  elaborate: AcceleratorSchema.default(DEFAULT_HOTKEYS.elaborate),
+  regenerate: AcceleratorSchema.default(DEFAULT_HOTKEYS.regenerate),
+  screenshot: AcceleratorSchema.default(DEFAULT_HOTKEYS.screenshot),
+  toggleMic: AcceleratorSchema.default(DEFAULT_HOTKEYS.toggleMic),
+  clearAnswers: AcceleratorSchema.default(DEFAULT_HOTKEYS.clearAnswers)
 })
 export type Hotkeys = z.infer<typeof HotkeysSchema>
-
-export const DEFAULT_HOTKEYS: Hotkeys = {
-  toggleOverlay: 'Ctrl+Alt+G',
-  toggleClickThrough: 'Ctrl+Alt+C',
-  panicHide: 'Ctrl+Alt+H'
-}
