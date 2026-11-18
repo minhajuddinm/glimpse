@@ -1,5 +1,5 @@
 /**
- * Renders build/icon.svg to the PNG and ICO files the app and installer use.
+ * Uses build/icon-source.png when present (the chosen logo), otherwise renders build/icon.svg, to the PNG and ICO files the app and installer use.
  * Runs inside Electron (Chromium rasterises the SVG): npm run icons
  */
 const { app, BrowserWindow, nativeImage } = require('electron')
@@ -43,7 +43,11 @@ app.whenReady().then(async () => {
   const win = new BrowserWindow({ width: 512, height: 512, show: false, transparent: true, frame: false, webPreferences: { offscreen: true } })
   mkdirSync(join(root, 'resources'), { recursive: true })
   let master
-  try {
+  const source = join(root, 'build/icon-source.png')
+  if (require('node:fs').existsSync(source)) {
+    master = readFileSync(source)
+    writeFileSync(join(root, 'build/icon.png'), master)
+  } else try {
     master = await render(win, 512)
     writeFileSync(join(root, 'build/icon.png'), master)
   } catch (error) {

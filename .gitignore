@@ -11,3 +11,4 @@ coverage/
 bench/audio/
 bench/results/
 bench/real/
+*.jfif
