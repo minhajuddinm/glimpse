@@ -1,3 +1,5 @@
+<p align="center"><img src="build/icon.png" alt="Glimpse logo" width="120" /></p>
+
 # Glimpse
 
 A real-time conversation copilot for **Windows**. It listens to your call (your microphone plus the other side's audio), transcribes it locally, and shows short answers in a side panel. The panel is hidden from screen sharing and recording. Answers come from **your own notes folder first**, for example your interview notes and prepared answers.

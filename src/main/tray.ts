@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { Menu, Tray, app, nativeImage, type NativeImage } from 'electron'
 
 const SIZE = 16
@@ -28,8 +29,14 @@ export interface TrayActions {
   readonly onToggleOverlay: () => void
 }
 
+/** The Glimpse logo from resources/, or the drawn dot if the file is missing. */
+function logoIcon(): NativeImage {
+  const image = nativeImage.createFromPath(join(app.getAppPath(), 'resources', 'tray.png'))
+  return image.isEmpty() ? trayIcon() : image
+}
+
 export function createTray(actions: TrayActions): Tray {
-  const tray = new Tray(trayIcon())
+  const tray = new Tray(logoIcon())
   tray.setToolTip('Glimpse')
   tray.setContextMenu(
     Menu.buildFromTemplate([

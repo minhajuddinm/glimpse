@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, app } from 'electron'
 import { SECURE_WEB_PREFERENCES, devRendererUrl, lockDownNavigation, rendererFileUrl } from '../security'
 
 let settingsWindow: BrowserWindow | null = null
@@ -20,6 +20,7 @@ export function showSettingsWindow(): BrowserWindow {
     title: 'Glimpse',
     backgroundColor: '#0b0b12',
     autoHideMenuBar: true,
+    icon: join(app.getAppPath(), 'resources', 'icon.png'),
     webPreferences: {
       ...SECURE_WEB_PREFERENCES,
       preload: join(__dirname, '../preload/index.js')

@@ -22,7 +22,8 @@
     "canary": "electron-vite build && electron . --canary=60",
     "fetch-models": "node scripts/fetch-models.mts",
     "bench:audio": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gen-bench-audio.ps1",
-    "bench:asr": "node scripts/bench-asr.mts"
+    "bench:asr": "node scripts/bench-asr.mts",
+    "icons": "electron scripts/render-icons.cjs"
   },
   "dependencies": {
     "koffi": "3.3.8",
@@ -58,10 +59,12 @@
       "output": "release"
     },
     "files": [
-      "out/**/*"
+      "out/**/*",
+      "resources/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,

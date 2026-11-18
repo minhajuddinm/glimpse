@@ -23,7 +23,7 @@ export function App() {
   return (
     <main className="mx-auto flex min-h-full max-w-3xl flex-col gap-5 px-8 py-8">
       <header className="flex items-center gap-3">
-        <span className="h-2.5 w-2.5 rounded-full bg-violet shadow-[0_0_12px_var(--color-violet)]" />
+        <img src="./logo.png" alt="" className="h-7 w-7 rounded-lg" />
         <h1 className="text-xl font-semibold tracking-tight text-white">Glimpse</h1>
         {info !== null && (
           <span className="ml-auto text-xs text-white/40">
