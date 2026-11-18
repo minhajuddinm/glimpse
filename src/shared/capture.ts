@@ -67,6 +67,14 @@ export const SelfTestResultSchema = z.object({
 })
 export type SelfTestResult = z.infer<typeof SelfTestResultSchema>
 
+/** Remote-viewing software that captures the screen the way a recorder does. */
+export const RemoteInfoSchema = z.object({
+  /** True inside a Remote Desktop (RDP) session. */
+  rdpSession: z.boolean(),
+  tools: z.array(z.string())
+})
+export type RemoteInfo = z.infer<typeof RemoteInfoSchema>
+
 export const CAPTURE_APPS = [
   'Zoom',
   'Google Meet',
@@ -99,5 +107,9 @@ export const MatrixRowSchema = z.object({
 })
 export type MatrixRow = z.infer<typeof MatrixRowSchema>
 
-export const LiveStatusSchema = z.object({ endsAt: z.number().nullable() })
+export const LiveModeSchema = z.enum(['protected', 'control'])
+export type LiveMode = z.infer<typeof LiveModeSchema>
+
+/** mode 'control' means the pattern is shown with protection OFF so a recorder is expected to see it. */
+export const LiveStatusSchema = z.object({ endsAt: z.number().nullable(), mode: LiveModeSchema.nullable() })
 export type LiveStatus = z.infer<typeof LiveStatusSchema>

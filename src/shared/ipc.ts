@@ -7,6 +7,7 @@ import {
   OverlayStateSchema,
   ProtectionStatusSchema,
   RectSchema,
+  RemoteInfoSchema,
   SelfTestResultSchema
 } from './capture'
 import { SettingsPatchSchema, SettingsSchema } from './settings'
@@ -49,7 +50,9 @@ export const ipcContract = {
   'selftest:run': { request: z.null(), response: SelfTestResultSchema },
   'selftest:last': { request: z.null(), response: SelfTestResultSchema.nullable() },
   'live:start': { request: z.object({ seconds: z.number().int().min(5).max(300) }), response: LiveStatusSchema },
+  'live:control': { request: z.object({ seconds: z.number().int().min(3).max(30) }), response: LiveStatusSchema },
   'live:stop': { request: z.null(), response: LiveStatusSchema },
+  'env:remote': { request: z.null(), response: RemoteInfoSchema },
   'live:report': { request: LiveReportSchema, response: z.array(MatrixRowSchema) },
   'live:matrix': { request: z.null(), response: z.array(MatrixRowSchema) }
 } as const satisfies Record<string, { request: z.ZodType; response: z.ZodType }>

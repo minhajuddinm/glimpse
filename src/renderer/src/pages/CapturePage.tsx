@@ -3,8 +3,10 @@ import {
   CAPTURE_APPS,
   CaptureAppSchema,
   type CaptureApp,
+  type LiveMode,
   type MatrixRow,
   type OverlayState,
+  type RemoteInfo,
   type SelfTestResult
 } from '../../../shared/capture'
 import { errorMessage, subscribe } from '../ipc'
@@ -14,6 +16,28 @@ const LIVE_DURATIONS = [30, 60, 120] as const
 
 function verdictTone(verdict: SelfTestResult['verdict']): 'good' | 'bad' | 'warn' {
   return verdict === 'PASS' ? 'good' : verdict === 'FAIL' ? 'bad' : 'warn'
+}
+
+function RemoteBanner() {
+  const [info, setInfo] = useState<RemoteInfo | null>(null)
+
+  useEffect(() => {
+    void window.glimpse.invoke('env:remote', null).then(setInfo)
+  }, [])
+
+  if (info === null || (!info.rdpSession && info.tools.length === 0)) return null
+  const what = info.rdpSession ? 'a Remote Desktop session' : info.tools.join(', ')
+  return (
+    <div role="note" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm leading-relaxed text-amber-100">
+      <div className="mb-1 font-semibold">Remote-viewing software found: {what}</div>
+      <p className="text-xs text-amber-100/80">
+        Streaming and remote-desktop tools capture your screen the same way a recorder does. If you are looking at this PC
+        through one of them, <strong>the protected overlay is invisible to you too</strong>. That is the protection working,
+        not a fault. To see the overlay, sit at the PC's own monitor. To test screen sharing, judge the result from the
+        viewer's side, such as a phone or a second computer in the call, and run the control step first.
+      </p>
+    </div>
+  )
 }
 
 function ProtectionCard({ state }: { state: OverlayState | null }) {
@@ -96,6 +120,7 @@ function ResultView({ result }: { result: SelfTestResult }) {
 function SelfTestCard() {
   const [result, setResult] = useState<SelfTestResult | null>(null)
   const [running, setRunning] = useState(false)
+  const [notSharing, setNotSharing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -119,11 +144,23 @@ function SelfTestCard() {
       <p className="mb-3 text-xs leading-relaxed text-white/55">
         Paints the overlay with a magenta/green pattern, captures this display the way a screen recorder does, and checks
         the overlay is absent. A control capture with protection switched off for a moment proves the test can see it.
-        The pattern is briefly visible on your screen, so don't run this during a live screen share. Use the live test
-        below instead.
+        For about half a second protection is off, so the pattern <strong className="text-white/80">will appear in any
+        recording or screen share that is running</strong>. Don't run this while sharing or streaming. Use the live test
+        below for that.
       </p>
+      <label className="mb-3 flex items-center gap-2 text-sm text-white/80">
+        <input
+          type="checkbox"
+          className="accent-violet"
+          checked={notSharing}
+          onChange={(event) => {
+            setNotSharing(event.target.checked)
+          }}
+        />
+        I am not sharing my screen or recording right now
+      </label>
       <div className="mb-4 flex items-center gap-3">
-        <Button onClick={() => void run()} disabled={running}>
+        <Button onClick={() => void run()} disabled={running || !notSharing}>
           {running ? 'Running…' : 'Run self-test'}
         </Button>
       </div>
@@ -136,15 +173,21 @@ function SelfTestCard() {
 function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
   const [duration, setDuration] = useState<number>(60)
   const [endsAt, setEndsAt] = useState<number | null>(null)
+  const [mode, setMode] = useState<LiveMode | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [app, setApp] = useState<CaptureApp>('Zoom')
   const [visible, setVisible] = useState<boolean | null>(null)
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => subscribe('live:status', ({ endsAt: next }) => {
-    setEndsAt(next)
-  }), [])
+  useEffect(
+    () =>
+      subscribe('live:status', (status) => {
+        setEndsAt(status.endsAt)
+        setMode(status.mode)
+      }),
+    []
+  )
 
   useEffect(() => {
     if (endsAt === null) return
@@ -157,12 +200,17 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
   }, [endsAt])
 
   const secondsLeft = endsAt === null ? 0 : Math.max(0, Math.ceil((endsAt - now) / 1000))
+  const running = endsAt !== null
 
-  const start = async (): Promise<void> => {
+  const begin = async (kind: LiveMode): Promise<void> => {
     setError(null)
     try {
-      const status = await window.glimpse.invoke('live:start', { seconds: duration })
+      const status =
+        kind === 'control'
+          ? await window.glimpse.invoke('live:control', { seconds: 5 })
+          : await window.glimpse.invoke('live:start', { seconds: duration })
       setEndsAt(status.endsAt)
+      setMode(status.mode)
       setNow(Date.now())
     } catch (caught) {
       setError(errorMessage(caught))
@@ -183,18 +231,30 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
 
   return (
     <Card title="Live test with a real recorder">
-      <ol className="mb-4 list-decimal space-y-1 pl-5 text-xs leading-relaxed text-white/55">
+      <ol className="mb-4 list-decimal space-y-1.5 pl-5 text-xs leading-relaxed text-white/55">
         <li>Start your recording or screen share (Zoom, Meet, Teams, OBS, Loom, Discord, Game Bar…).</li>
-        <li>Press <strong className="text-white/80">Show pattern</strong>. The overlay paints the magenta/green pattern for the chosen time.</li>
-        <li>Look at the recording or what the other side sees. The pattern should be absent, even though you can see it.</li>
-        <li>Report below what you saw. This fills in the capture matrix.</li>
+        <li>
+          <strong className="text-white/80">Step 1, control.</strong> The pattern is shown <em>without</em> protection for 5
+          seconds. It <strong className="text-white/80">must appear</strong> in your recording or on the viewer&apos;s screen.
+          If it doesn&apos;t, this setup can&apos;t see your screen and step 2 proves nothing.
+        </li>
+        <li>
+          <strong className="text-white/80">Step 2, protected.</strong> The pattern is shown with protection on. It{' '}
+          <strong className="text-white/80">must not appear</strong> in the recording or on the viewer&apos;s screen. Judge
+          from the viewer&apos;s side (a phone or second computer in the call). If you are viewing this PC remotely, you won&apos;t
+          see it either.
+        </li>
+        <li>Report what you saw below. This fills in the capture matrix.</li>
       </ol>
       {error !== null && <ErrorBanner message={error} />}
       <div className="my-3 flex flex-wrap items-center gap-3">
+        <Button tone="ghost" onClick={() => void begin('control')} disabled={running}>
+          Step 1: Control (5 s)
+        </Button>
         <select
           className="rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white"
           value={duration}
-          disabled={endsAt !== null}
+          disabled={running}
           onChange={(event) => {
             setDuration(Number(event.target.value))
           }}
@@ -205,11 +265,14 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
             </option>
           ))}
         </select>
-        {endsAt === null ? (
-          <Button onClick={() => void start()}>Show pattern</Button>
-        ) : (
+        <Button onClick={() => void begin('protected')} disabled={running}>
+          Step 2: Protected pattern
+        </Button>
+        {running && (
           <>
-            <Badge tone="warn">Pattern on · {secondsLeft}s</Badge>
+            <Badge tone={mode === 'control' ? 'bad' : 'warn'}>
+              {mode === 'control' ? 'Control: visible to recorders' : 'Protected pattern on'} · {secondsLeft}s
+            </Badge>
             <Button tone="ghost" onClick={() => void window.glimpse.invoke('live:stop', null)}>
               Stop
             </Button>
@@ -234,18 +297,34 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
             ))}
           </select>
           <label className="flex items-center gap-1.5 text-sm text-white/80">
-            <input type="radio" name="seen" className="accent-violet" checked={visible === false} onChange={() => { setVisible(false) }} />
-            Overlay not visible (PASS)
+            <input
+              type="radio"
+              name="seen"
+              className="accent-violet"
+              checked={visible === false}
+              onChange={() => {
+                setVisible(false)
+              }}
+            />
+            Control seen, protected pattern not seen (PASS)
           </label>
           <label className="flex items-center gap-1.5 text-sm text-white/80">
-            <input type="radio" name="seen" className="accent-violet" checked={visible === true} onChange={() => { setVisible(true) }} />
-            Overlay visible (FAIL)
+            <input
+              type="radio"
+              name="seen"
+              className="accent-violet"
+              checked={visible === true}
+              onChange={() => {
+                setVisible(true)
+              }}
+            />
+            Protected pattern seen (FAIL)
           </label>
         </div>
         <input
           type="text"
           maxLength={500}
-          placeholder="Notes (app version, capture mode…)"
+          placeholder="Notes (app version, capture mode, how you viewed it…)"
           value={notes}
           onChange={(event) => {
             setNotes(event.target.value)
@@ -308,6 +387,7 @@ export function CapturePage() {
 
   return (
     <div className="space-y-5">
+      <RemoteBanner />
       <ProtectionCard state={state} />
       <SelfTestCard />
       <LiveCard onReported={setMatrix} />

@@ -5,6 +5,7 @@ import type { HotkeyManager } from './hotkeys'
 import { registerHandler } from './ipc'
 import type { OverlayController } from './overlay'
 import { isTrustedSender } from './security'
+import { detectRemoteViewers } from './remote'
 import type { LiveSession } from './selftest/live'
 import type { CaptureStore } from './selftest/store'
 import type { SettingsStore } from './settingsStore'
@@ -83,7 +84,9 @@ export function registerAllHandlers(ctx: HandlerContext): void {
   registerHandler('selftest:last', isTrustedSender, () => captureStore.lastSelfTest())
 
   registerHandler('live:start', isTrustedSender, ({ seconds }) => live.start(seconds))
+  registerHandler('live:control', isTrustedSender, ({ seconds }) => live.control(seconds))
   registerHandler('live:stop', isTrustedSender, () => live.stop())
+  registerHandler('env:remote', isTrustedSender, () => detectRemoteViewers())
 
   registerHandler('live:report', isTrustedSender, (report) => {
     captureStore.saveMatrixRow({

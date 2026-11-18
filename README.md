@@ -47,8 +47,18 @@ Another app may already own a shortcut (Claude Desktop's Quick Entry uses `Ctrl+
 
 **Settings → Capture test** has two checks:
 
-1. **Self-test.** Paints the overlay with a magenta/green pattern, captures the display the way a recorder does, and looks for the pattern in a grid of 12 regions. A baseline capture (overlay hidden) rules out wallpaper that happens to be magenta or green. A control capture with protection switched off for a moment proves the test can see the overlay at all. The result is **PASS**, **FAIL** or **INCONCLUSIVE** (the control saw nothing), with diff images. The pattern is briefly visible on your screen, so don't run it during a live share.
-2. **Live test.** Shows the pattern for 30–120 s while you record or share your screen in a real app. Then record what you saw. Results fill the capture matrix below and are kept in the app.
+1. **Self-test.** Paints the overlay with a magenta/green pattern, captures the display the way a recorder does, and looks for the pattern in a grid of 12 regions. A baseline capture (overlay hidden) rules out wallpaper that happens to be magenta or green. A control capture with protection switched off for a moment proves the test can see the overlay at all. The result is **PASS**, **FAIL** or **INCONCLUSIVE** (the control saw nothing), with diff images. For about half a second the control capture turns protection off, so the pattern **will appear in any recording or share that is running**. Don't run it during a live share (the button stays disabled until you confirm you aren't sharing).
+2. **Live test.** Run it while you record or share your screen in a real app, in two steps:
+   - **Step 1, control (5 s).** Shows the pattern *without* protection. It **must appear** in the recording or on the viewer's screen. If it doesn't, your setup can't see the screen and step 2 proves nothing.
+   - **Step 2, protected (30–120 s).** Shows the pattern with protection on. It **must not appear** in the recording or on the viewer's screen.
+
+   Then record what you saw. Results fill the capture matrix below and are kept in the app. Panic hide ends any live test and turns protection back on.
+
+   Judge the result from the **viewer's side** (a phone or second computer in the call), not from your own screen, especially if you reach this PC remotely (see below).
+
+### If you use Parsec, Moonlight, Remote Desktop or similar
+
+Streaming and remote-desktop tools capture your screen the same way a recorder does. **Through them, the protected overlay is invisible to you too**: you will see no overlay and no pattern. That is the protection working, not a fault, and it follows from how Windows excludes windows from capture. To see the overlay, sit at the PC's own monitor. Glimpse looks for these tools (Parsec, Sunshine/Moonlight, AnyDesk, TeamViewer, RustDesk, Chrome Remote Desktop, VNC, Splashtop, and RDP sessions) and shows a warning on the Capture test tab. The warning is a hint: a running process does not prove a session is active.
 
 The self-test result (verdict and per-region numbers) is saved. The diff images show a strip of your actual screen, so they are **never saved**. `npm run selftest` writes them to `%TEMP%\glimpse-selftest` — delete them when you are done.
 

@@ -4,6 +4,8 @@ export interface PanicDeps {
   readonly overlay: OverlayController
   readonly hideTray: () => void
   readonly showTray: () => void
+  /** Ends any live test, which restores capture protection if a control step had turned it off. */
+  readonly stopLive: () => void
 }
 
 /**
@@ -34,6 +36,7 @@ export class PanicController {
       // Hide first: nothing visible should outlive the keypress.
       this.deps.overlay.setPanic(true)
       this.deps.hideTray()
+      this.deps.stopLive()
     } else {
       this.deps.showTray()
       this.deps.overlay.setPanic(false)

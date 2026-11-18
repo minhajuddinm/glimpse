@@ -125,9 +125,16 @@ async function startNormal(): Promise<void> {
     tray = null
   }
 
-  const panic = new PanicController({ overlay, hideTray, showTray })
   const live = new LiveSession(overlay, (status) => {
     broadcast('live:status', status)
+  })
+  const panic = new PanicController({
+    overlay,
+    hideTray,
+    showTray,
+    stopLive: () => {
+      void live.stop()
+    }
   })
 
   const hotkeys = new HotkeyManager(globalShortcut, {

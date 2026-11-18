@@ -18,7 +18,9 @@ export const INVOKE_CHANNELS = [
   'selftest:run',
   'selftest:last',
   'live:start',
+  'live:control',
   'live:stop',
+  'env:remote',
   'live:report',
   'live:matrix'
 ] as const satisfies readonly InvokeChannel[]
