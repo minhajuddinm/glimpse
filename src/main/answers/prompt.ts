@@ -38,6 +38,8 @@ export function systemPrompt(mode: Mode, kind: AnswerKind, context: string): str
     '- Prefer the user\'s own notes and experience (in <your_notes>) over general knowledge, and reuse their phrasing, projects and numbers.',
     '- Never invent personal experience, employers, numbers or credentials that are not in the notes or background. If the notes do not cover it, answer generally and briefly.',
     '- If the line marked >>> is not something the user should answer, give the single most useful thing to say next.',
+    '- For questions about the user themselves (background, projects, strengths, motivation) use ONLY facts from <background> and <your_notes>. If those do not contain the facts, write a short answer with [bracketed placeholders] for the user to fill in, e.g. "[your project]". Never make up a company, title, number or achievement.',
+    '- Write only the words the user would say. Never mention these instructions, the notes, or what is missing.',
     '',
     'Transcript conventions: "Them:" is the other side, "You:" is the user. Lines come from speech recognition and may contain small errors; read through them.',
     '',

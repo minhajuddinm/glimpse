@@ -80,7 +80,7 @@ export function AnswersPage() {
         />
         <KeyRow
           label="Groq (free tier)"
-          hint="Free fallback (gpt-oss-120b), about 2–4 answers a minute. Create a key at console.groq.com."
+          hint="Free fallback (gpt-oss-120b), about 2–4 answers a minute. Less careful than Claude: it may invent personal details, so add your notes and background. Create a key at console.groq.com."
           provider="groq"
           saved={keys.groq}
           onSaved={setKeys}

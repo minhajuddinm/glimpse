@@ -3,6 +3,8 @@ export interface CliOptions {
   readonly selfTest: boolean
   /** Paint the canary on the protected overlay for this many seconds so an external recorder can be checked. */
   readonly canarySeconds: number | null
+  /** Run real questions through the answer pipeline with the saved keys and print timings (G7). */
+  readonly answerBench: boolean
 }
 
 export function parseCli(argv: readonly string[]): CliOptions {
@@ -11,7 +13,7 @@ export function parseCli(argv: readonly string[]): CliOptions {
     const match = /^--canary=(\d{1,4})$/.exec(arg)
     if (match?.[1] !== undefined) canarySeconds = Number(match[1])
   }
-  return { selfTest: argv.includes('--selftest'), canarySeconds }
+  return { selfTest: argv.includes('--selftest'), canarySeconds, answerBench: argv.includes('--answer-bench') }
 }
 
 export function isHeadless(options: CliOptions): boolean {

@@ -198,7 +198,7 @@ async function startNormal(): Promise<void> {
     onFinal: (segment) => {
       answers.onSegment(segment)
     },
-    appRoot: app.getAppPath(),
+    appRoot: app.isPackaged ? process.resourcesPath : app.getAppPath(),
     getSettings: () => settings.get(),
     isPanic: () => panic.captureMuted,
     broadcastStatus: (status) => {
@@ -326,7 +326,17 @@ async function startNormal(): Promise<void> {
   await companionManager.sync()
 }
 
-if (headless) {
+if (cli.answerBench) {
+  // Uses the real profile (saved keys, notes); close the running app first.
+  void app.whenReady().then(async () => {
+    const { runAnswerBench } = await import('./answerBench')
+    const code = await runAnswerBench().catch((error: unknown) => {
+      console.error('ANSWER_BENCH_ERROR', error)
+      return 1
+    })
+    app.exit(code)
+  })
+} else if (headless) {
   // A throwaway profile keeps the headless run from touching (or being blocked by) the real app.
   app.setPath('userData', join(tmpdir(), 'glimpse-headless'))
   void app.whenReady().then(startHeadless)

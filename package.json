@@ -25,7 +25,8 @@
     "bench:asr": "node scripts/bench-asr.mts",
     "icons": "electron scripts/render-icons.cjs",
     "bench:pipeline": "node scripts/bench-pipeline.mts",
-    "bench:kb": "vitest run -c vitest.bench.mts --reporter verbose"
+    "bench:kb": "vitest run -c vitest.bench.mts --reporter verbose",
+    "bench:answer": "electron-vite build && electron . --answer-bench"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.10.0",
@@ -82,7 +83,22 @@
       {
         "from": "models/embeddings",
         "to": "models/embeddings"
+      },
+      {
+        "from": "models/silero-vad",
+        "to": "models/silero-vad"
+      },
+      {
+        "from": "models/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06",
+        "to": "models/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06"
       }
+    ],
+    "asarUnpack": [
+      "node_modules/sherpa-onnx-*/**",
+      "node_modules/koffi/**",
+      "node_modules/onnxruntime-node/**",
+      "node_modules/sharp/**",
+      "node_modules/@img/**"
     ]
   }
 }
