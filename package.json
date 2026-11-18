@@ -77,6 +77,12 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "extraResources": [
+      {
+        "from": "models/embeddings",
+        "to": "models/embeddings"
+      }
+    ]
   }
 }

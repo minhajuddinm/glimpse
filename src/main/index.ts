@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { release, tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { Notification, app, globalShortcut, type Tray } from 'electron'
 import { broadcast } from './broadcast'
 import { isHeadless, parseCli } from './cli'
@@ -156,11 +156,14 @@ async function startNormal(): Promise<void> {
 
   // Pillar C: notes folder, API keys and the answer service.
   const secrets = new SecretStore(settings)
-  const notesFolder = app.isPackaged ? join(dirname(app.getPath('exe')), 'notes') : join(app.getAppPath(), 'notes')
+  // Dev: the notes folder sits at the app base. Installed: Documents\Glimpse Notes, because the install folder
+  // may be read-only and is wiped by uninstall/update.
+  const notesFolder = app.isPackaged ? join(app.getPath('documents'), 'Glimpse Notes') : join(app.getAppPath(), 'notes')
+  const modelsRoot = app.isPackaged ? join(process.resourcesPath, 'models') : join(app.getAppPath(), 'models')
   const kb = new KnowledgeBase({
     folder: notesFolder,
     store: new KbStore(db),
-    loadEmbedder: () => loadEmbedder(join(app.getAppPath(), 'models')),
+    loadEmbedder: () => loadEmbedder(modelsRoot),
     onStatus: (status) => {
       broadcast('kb:status', status)
     }

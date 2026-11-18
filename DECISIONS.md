@@ -41,3 +41,4 @@ One line per deviation from BRIEF v2, with the reason.
 - **Keys**: `safeStorage` async API (DPAPI); decrypted keys held in main memory only, never sent to a renderer.
 - **Sonnet "elaborate"** uses the server-side fallback beta so a classifier decline still returns an answer.
 - **Groq is text-only**: screenshot questions need the Anthropic key.
+- **Installed app keeps notes in `Documents\Glimpse Notes`** (dev keeps `<app>/notes`): the install folder can be read-only and is wiped on uninstall/update. The embedding model ships via `extraResources` and loads from `process.resourcesPath`.

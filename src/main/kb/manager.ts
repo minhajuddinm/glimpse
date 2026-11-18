@@ -71,6 +71,13 @@ export class KnowledgeBase {
         void this.reindex()
       }, 800)
     })
+    this.watcher.on('error', (error) => {
+      this.watcher?.close()
+      this.watcher = null
+      this.state = 'error'
+      this.message = `Stopped watching the notes folder (${error.message}). Press Re-index after fixing it.`
+      this.emit()
+    })
   }
 
   status(): KbStatus {
@@ -122,7 +129,12 @@ export class KnowledgeBase {
   }
 
   async search(query: string, limit = 4): Promise<KbHit[]> {
-    const vector = this.embedder === null ? null : ((await this.embedder.embed([query]))[0] ?? null)
+    let vector: Float32Array | null = null
+    try {
+      vector = this.embedder === null ? null : ((await this.embedder.embed([query]))[0] ?? null)
+    } catch {
+      // Meaning search failed for this query; keyword search (vector stays null) still finds prepared answers.
+    }
     return hybridSearch(this.options.store, query, vector, limit)
   }
 
