@@ -23,12 +23,26 @@ export const INVOKE_CHANNELS = [
   'live:stop',
   'env:remote',
   'live:report',
-  'live:matrix'
+  'live:matrix',
+  'capture:config',
+  'capture:report',
+  'audio:status',
+  'audio:devices',
+  'audio:retry',
+  'transcript:get',
+  'transcript:clear',
+  'companion:info',
+  'companion:regenerate'
 ] as const satisfies readonly InvokeChannel[]
 
 export const EVENT_CHANNELS = [
   'overlay:state',
   'overlay:canary',
   'settings:changed',
-  'live:status'
+  'live:status',
+  'capture:control',
+  'audio:status',
+  'audio:levels',
+  'transcript:update',
+  'companion:info'
 ] as const satisfies readonly EventChannel[]

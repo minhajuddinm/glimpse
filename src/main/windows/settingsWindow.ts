@@ -1,8 +1,9 @@
 import { join } from 'node:path'
-import { BrowserWindow, app } from 'electron'
+import { BrowserWindow, Notification, app } from 'electron'
 import { SECURE_WEB_PREFERENCES, devRendererUrl, lockDownNavigation, rendererFileUrl } from '../security'
 
 let settingsWindow: BrowserWindow | null = null
+let closeNoticeShown = false
 
 export function showSettingsWindow(): BrowserWindow {
   if (settingsWindow !== null && !settingsWindow.isDestroyed()) {
@@ -32,6 +33,15 @@ export function showSettingsWindow(): BrowserWindow {
   })
   win.on('closed', () => {
     settingsWindow = null
+    // Closing Settings does not quit Glimpse; say so once per run.
+    if (!closeNoticeShown && Notification.isSupported()) {
+      closeNoticeShown = true
+      new Notification({
+        title: 'Glimpse is still running',
+        body: 'It keeps listening in the background. Open it again from the tray icon, or quit it there.',
+        icon: join(app.getAppPath(), 'resources', 'icon.png')
+      }).show()
+    }
   })
 
   const dev = devRendererUrl()

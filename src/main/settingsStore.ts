@@ -20,6 +20,18 @@ export class SettingsStore {
     return mergeStoredSettings(stored)
   }
 
+  /** Values stored next to the settings but never sent to a renderer (e.g. the companion access code). */
+  getRaw(key: string): string | null {
+    const row = RowsSchema.element.safeParse(this.db.prepare('SELECT key, value FROM settings WHERE key = ?').get(key))
+    return row.success ? row.data.value : null
+  }
+
+  setRaw(key: string, value: string): void {
+    this.db
+      .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .run(key, value)
+  }
+
   update(patch: SettingsUpdate): Settings {
     const next = applySettingsPatch(this.get(), patch)
     const upsert = this.db.prepare(

@@ -87,6 +87,17 @@ The self-test result (verdict and per-region numbers) is saved. The diff images 
 
 Windows 10 before 2004 (`WDA_MONITOR` capture-safe mode) is implemented but has not been tested.
 
+## Audio and transcription (Pillar B)
+
+- **Them** is everything your speakers or headset play (the other side of the call), captured as Windows loopback audio. **You** is your microphone, with echo cancellation, noise suppression and automatic gain. Pick the mic, watch both meters and mute either one in **Settings → Audio**.
+- Speech recognition runs **on this PC**. The default model is Kroko (55 MB); Nemotron 0.6B (447 MB) is optional. A voice detector ends each utterance about 0.4 s after you stop talking. Measured on this PC: speech end to text ≈ 0.5 s (p95 ≈ 0.55 s).
+- Unplug a microphone and Glimpse keeps the call going on system audio, falls back to the Windows default mic and comes back when you plug it in. After 5 failed attempts a source pauses with the reason and a **Retry** button.
+- First run: `npm run fetch-models -- --only kroko-en,silero-vad` (about 56 MB).
+
+## Companion page (phone or second computer)
+
+Turn it on in **Settings → Companion**, then scan the QR code. It shows the live transcript (and, later, the answers) on another device. This is useful when you view this PC through Moonlight or Parsec, where the overlay is hidden from you. It is served from this PC only, never through the internet. By default only this PC can open it; **Allow other devices** opens it to your home network and Tailscale. Every link carries a random access code; **New access code** invalidates old links.
+
 ## Privacy
 
 - Speech recognition will run **on your machine**. Audio is never uploaded unless you turn on the optional cloud accuracy setting.
@@ -99,7 +110,7 @@ Windows 10 before 2004 (`WDA_MONITOR` capture-safe mode) is implemented but has 
 |---|---|---|
 | M0 | Electron + React + TypeScript strict, Zod-validated IPC, SQLite settings, tray | ✅ |
 | A | Capture-invisible overlay, click-through, panic hide, hotkeys, capture self-test and live test | ✅ (manual recorder tests pending) |
-| B | Microphone + system audio, local streaming transcription, speaker labels | ⏳ |
+| B | Microphone + system audio, local streaming transcription, speaker labels, companion page | ✅ (real two-person recording pending) |
 | C | Question detection, live answers, modes, screenshot context, hotkeys | ⏳ |
 | KB | Notes-folder search (Markdown/TXT/DOCX/PDF), instant prepared answers | ⏳ |
 

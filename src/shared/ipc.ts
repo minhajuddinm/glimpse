@@ -11,6 +11,24 @@ import {
   SelfTestResultSchema
 } from './capture'
 import { SettingsPatchSchema, SettingsSchema } from './settings'
+import {
+  AudioDeviceSchema,
+  AudioLevelsSchema,
+  AudioStatusSchema,
+  CompanionInfoSchema,
+  SourceStatusSchema,
+  TranscriptSnapshotSchema
+} from './transcript'
+
+/** What the hidden capture page should be doing. `retry` increments when the user presses Retry. */
+export const CaptureControlSchema = z.object({
+  micDeviceId: z.string().nullable(),
+  micEnabled: z.boolean(),
+  loopbackEnabled: z.boolean(),
+  paused: z.boolean(),
+  retry: z.number().int()
+})
+export type CaptureControl = z.infer<typeof CaptureControlSchema>
 
 export const AppInfoSchema = z.object({
   name: z.string(),
@@ -55,6 +73,18 @@ export const ipcContract = {
   'live:stop': { request: z.null(), response: LiveStatusSchema },
   'env:remote': { request: z.null(), response: RemoteInfoSchema },
   'live:report': { request: LiveReportSchema, response: z.array(MatrixRowSchema) },
+  'capture:config': { request: z.null(), response: CaptureControlSchema },
+  'capture:report': {
+    request: z.object({ them: SourceStatusSchema, you: SourceStatusSchema, devices: z.array(AudioDeviceSchema).max(64) }),
+    response: z.null()
+  },
+  'audio:status': { request: z.null(), response: AudioStatusSchema },
+  'audio:devices': { request: z.null(), response: z.array(AudioDeviceSchema) },
+  'audio:retry': { request: z.null(), response: z.null() },
+  'transcript:get': { request: z.null(), response: TranscriptSnapshotSchema },
+  'transcript:clear': { request: z.null(), response: z.null() },
+  'companion:info': { request: z.null(), response: CompanionInfoSchema },
+  'companion:regenerate': { request: z.null(), response: CompanionInfoSchema },
   'live:matrix': { request: z.null(), response: z.array(MatrixRowSchema) }
 } as const satisfies Record<string, { request: z.ZodType; response: z.ZodType }>
 
@@ -63,7 +93,12 @@ export const ipcEvents = {
   'overlay:state': OverlayStateSchema,
   'overlay:canary': z.object({ on: z.boolean() }),
   'settings:changed': SettingsSchema,
-  'live:status': LiveStatusSchema
+  'live:status': LiveStatusSchema,
+  'capture:control': CaptureControlSchema,
+  'audio:status': AudioStatusSchema,
+  'audio:levels': AudioLevelsSchema,
+  'transcript:update': TranscriptSnapshotSchema,
+  'companion:info': CompanionInfoSchema
 } as const satisfies Record<string, z.ZodType>
 
 export type IpcContract = typeof ipcContract

@@ -20,6 +20,12 @@ export interface OnlineRecognizerConfig {
   }
   readonly decodingMethod?: 'greedy_search' | 'modified_beam_search'
   readonly enableEndpoint?: boolean
+  /** Endpoint after this much trailing silence when nothing was recognised. */
+  readonly rule1MinTrailingSilence?: number
+  /** Endpoint after this much trailing silence once something was recognised. */
+  readonly rule2MinTrailingSilence?: number
+  /** Endpoint once an utterance is this long (seconds). */
+  readonly rule3MinUtteranceLength?: number
 }
 
 export interface OnlineResult {
@@ -51,4 +57,30 @@ export interface SherpaModule {
   OnlineRecognizer: new (config: OnlineRecognizerConfig) => OnlineRecognizer
   readWave(filename: string): WaveInput
   readonly version: string
+}
+
+export interface VadConfig {
+  readonly sileroVad: {
+    readonly model: string
+    readonly threshold: number
+    readonly minSpeechDuration: number
+    readonly minSilenceDuration: number
+    readonly windowSize: number
+  }
+  readonly sampleRate: number
+  readonly numThreads: number
+  readonly provider: 'cpu'
+  readonly debug: 0 | 1
+}
+
+/** The subset of sherpa's Vad that Glimpse uses: "is someone speaking right now". */
+export interface VoiceDetector {
+  acceptWaveform(samples: Float32Array): void
+  isDetected(): boolean
+  isEmpty(): boolean
+  pop(): void
+}
+
+export interface SherpaVadModule {
+  Vad: new (config: VadConfig, bufferSizeInSeconds: number) => VoiceDetector
 }

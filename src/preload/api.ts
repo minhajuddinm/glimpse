@@ -7,4 +7,6 @@ export interface GlimpseApi {
    * renderer validates it against ipcEvents[channel]. Returns an unsubscribe function.
    */
   on(channel: EventChannel, listener: (payload: unknown) => void): () => void
+  /** Streams one 100 ms audio chunk to main. Only accepted from the hidden capture page. */
+  sendAudio(source: 'them' | 'you', samples: Float32Array, rms: number): void
 }

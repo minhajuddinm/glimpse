@@ -58,5 +58,16 @@
     "family": "nemotron",
     "note": "NVIDIA Nemotron speech streaming 0.6B, int8. Largest and likely most accurate.",
     "featureDim": 128
+  },
+  {
+    "id": "silero-vad",
+    "dir": "silero-vad",
+    "file": "silero_vad.onnx",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+    "bytes": 643854,
+    "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+    "family": "vad",
+    "featureDim": 0,
+    "note": "Silero voice-activity detector: decides when someone has stopped speaking."
   }
 ]

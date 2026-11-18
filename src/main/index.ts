@@ -9,6 +9,8 @@ import { registerAllHandlers } from './handlers'
 import { HotkeyManager } from './hotkeys'
 import { OverlayController } from './overlay'
 import { PanicController } from './panic'
+import { AudioPipeline } from './audio/pipeline'
+import { CompanionManager } from './companion/manager'
 import { LiveSession } from './selftest/live'
 import { runSelfTest } from './selftest/run'
 import { CaptureStore } from './selftest/store'
@@ -55,7 +57,10 @@ async function startHeadless(): Promise<void> {
       captureStore: new CaptureStore(db),
       live: new LiveSession(overlay, noop),
       windowsBuild: windowsBuild(),
-      runSelfTest: () => runSelfTest(overlay)
+      runSelfTest: () => runSelfTest(overlay),
+      pipeline: null,
+      companion: null,
+      onSettingsChanged: noop
     })
     await overlay.create()
     overlay.show()
@@ -139,6 +144,40 @@ async function startNormal(): Promise<void> {
     }
   })
 
+  let companion: CompanionManager | null = null
+  const pipeline = new AudioPipeline({
+    appRoot: app.getAppPath(),
+    getSettings: () => settings.get(),
+    isPanic: () => panic.captureMuted,
+    broadcastStatus: (status) => {
+      broadcast('audio:status', status)
+    },
+    broadcastLevels: (levels) => {
+      broadcast('audio:levels', levels)
+    },
+    broadcastTranscript: (snapshot) => {
+      broadcast('transcript:update', snapshot)
+      companion?.publish(snapshot)
+    }
+  })
+  companion = new CompanionManager({
+    getSettings: () => settings.get(),
+    getToken: () => settings.getRaw('companionToken'),
+    setToken: (token) => {
+      settings.setRaw('companionToken', token)
+    },
+    logoFile: join(app.getAppPath(), 'resources', 'icon.png'),
+    snapshot: () => pipeline.transcript.snapshot(),
+    onInfo: (info) => {
+      broadcast('companion:info', info)
+    }
+  })
+  const companionManager = companion
+  // Panic stops both capture sources; leaving panic starts them again.
+  panic.onCaptureMuted(() => {
+    pipeline.sync()
+  })
+
   const hotkeys = new HotkeyManager(globalShortcut, {
     toggleOverlay: () => {
       overlay.toggle()
@@ -160,10 +199,18 @@ async function startNormal(): Promise<void> {
     captureStore,
     live,
     windowsBuild: windowsBuild(),
-    runSelfTest: () => runSelfTest(overlay)
+    runSelfTest: () => runSelfTest(overlay),
+    pipeline,
+    companion: companionManager,
+    onSettingsChanged: () => {
+      pipeline.sync()
+      void companionManager.sync()
+    }
   })
 
   app.on('before-quit', () => {
+    pipeline.stop()
+    void companionManager.stop()
     hotkeys.dispose()
     overlay.destroy()
     hideTray()
@@ -185,6 +232,8 @@ async function startNormal(): Promise<void> {
   showTray()
   overlay.show()
   showSettingsWindow()
+  await pipeline.start()
+  await companionManager.sync()
 }
 
 if (headless) {

@@ -11,7 +11,16 @@ export const SettingsSchema = z.object({
   clickThrough: z.boolean(),
   overlayOpacity: z.number().min(MIN_OVERLAY_OPACITY).max(1),
   launchAtLogin: z.boolean(),
-  hotkeys: HotkeysSchema
+  hotkeys: HotkeysSchema,
+  /** Microphone deviceId; null follows the Windows default input. */
+  micDeviceId: z.string().max(256).nullable(),
+  micMuted: z.boolean(),
+  loopbackMuted: z.boolean(),
+  asrModel: z.enum(['kroko-en', 'nemotron-0.6b']),
+  /** Serve the companion page (transcript, later answers) to a second device. */
+  companionEnabled: z.boolean(),
+  /** Listen on the network (LAN / Tailscale) instead of only this PC. */
+  companionLan: z.boolean()
 })
 export type Settings = z.infer<typeof SettingsSchema>
 export type SettingKey = keyof Settings
@@ -28,6 +37,12 @@ export const DEFAULT_SETTINGS: Settings = {
   clickThrough: true,
   overlayOpacity: 1,
   launchAtLogin: false,
+  micDeviceId: null,
+  micMuted: false,
+  loopbackMuted: false,
+  asrModel: 'kroko-en',
+  companionEnabled: false,
+  companionLan: false,
   hotkeys: DEFAULT_HOTKEYS
 }
 

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { AudioPage } from './pages/AudioPage'
 import { CapturePage } from './pages/CapturePage'
+import { CompanionPage } from './pages/CompanionPage'
 import { GeneralPage } from './pages/GeneralPage'
 import { HotkeysPage } from './pages/HotkeysPage'
 import { useSettingsStore } from './store'
@@ -7,6 +9,8 @@ import { ErrorBanner } from './ui'
 
 const TABS = [
   { id: 'general', label: 'General' },
+  { id: 'audio', label: 'Audio' },
+  { id: 'companion', label: 'Companion' },
   { id: 'capture', label: 'Capture test' },
   { id: 'hotkeys', label: 'Hotkeys' }
 ] as const
@@ -54,6 +58,8 @@ export function App() {
       {error !== null && <ErrorBanner message={error} />}
 
       {tab === 'general' && <GeneralPage />}
+      {tab === 'audio' && <AudioPage />}
+      {tab === 'companion' && <CompanionPage />}
       {tab === 'capture' && <CapturePage />}
       {tab === 'hotkeys' && <HotkeysPage />}
     </main>

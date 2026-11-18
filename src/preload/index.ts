@@ -22,6 +22,9 @@ const api: GlimpseApi = {
     return () => {
       ipcRenderer.removeListener(channel, handler)
     }
+  },
+  sendAudio(source, samples, rms) {
+    ipcRenderer.send('audio:chunk', { source, samples, rms })
   }
 }
 
