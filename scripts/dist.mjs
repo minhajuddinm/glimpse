@@ -13,7 +13,7 @@ const env = {
   CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 }
 // Each Mac arch is built on its own machine: the native speech addon is installed per arch.
-const target = process.platform === 'darwin' ? `--mac dmg --${process.arch}` : '--win nsis --x64'
+const target = `${process.platform === 'darwin' ? `--mac dmg --${process.arch}` : '--win nsis --x64'} --publish never`
 for (const command of ['npm run build', `npx electron-builder ${target}`]) {
   const result = spawnSync(command, { cwd: root, env, stdio: 'inherit', shell: true })
   if (result.status !== 0) process.exit(result.status ?? 1)
