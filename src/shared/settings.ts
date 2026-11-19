@@ -28,7 +28,9 @@ export const SettingsSchema = z.object({
   /** Which answer provider to use; auto prefers Anthropic, then Groq. */
   llmProvider: z.enum(['auto', 'anthropic', 'groq']),
   /** Notes folder chosen by the user; empty = the default location. */
-  notesFolder: z.string().max(1000)
+  notesFolder: z.string().max(1000),
+  /** Show the overlay as soon as Glimpse starts; off = it stays hidden until you show it. */
+  overlayOnStart: z.boolean()
 })
 export type Settings = z.infer<typeof SettingsSchema>
 export type SettingKey = keyof Settings
@@ -55,6 +57,7 @@ export const DEFAULT_SETTINGS: Settings = {
   factCheck: false,
   llmProvider: 'auto',
   notesFolder: '',
+  overlayOnStart: false,
   hotkeys: DEFAULT_HOTKEYS
 }
 

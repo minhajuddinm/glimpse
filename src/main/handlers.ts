@@ -63,6 +63,11 @@ export function registerAllHandlers(ctx: HandlerContext): void {
   registerHandler('hotkeys:status', isTrustedSender, () => ({ failures: hotkeys.failures() }))
 
   registerHandler('overlay:state', isTrustedSender, () => overlay.state())
+  registerHandler('overlay:set-visible', isTrustedSender, ({ visible }) => {
+    if (visible) overlay.show()
+    else overlay.hide()
+    return overlay.state()
+  })
 
   registerHandler('overlay:hitRects', isTrustedSender, ({ rects }) => {
     overlay.setHitRects(rects)

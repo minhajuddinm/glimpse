@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { AudioLines, Keyboard, MessageSquareText, NotebookPen, ScanEye, Settings2, Smartphone, type LucideIcon } from 'lucide-react'
+import { AudioLines, Eye, EyeOff, Keyboard, MessageSquareText, NotebookPen, ScanEye, Settings2, Smartphone, type LucideIcon } from 'lucide-react'
+import type { OverlayState } from '../../shared/capture'
 import type { AudioStatus } from '../../shared/transcript'
 import { subscribe } from './ipc'
 import { AnswersPage } from './pages/AnswersPage'
@@ -30,6 +31,37 @@ const TABS = [
   { id: 'hotkeys', label: 'Hotkeys', icon: Keyboard, title: 'Hotkeys', description: 'Global shortcuts that work from any app, even while you share your screen.' }
 ] as const satisfies readonly Tab[]
 type TabId = (typeof TABS)[number]['id']
+
+/** Shows or hides the overlay from the app (it starts hidden unless chosen otherwise). */
+function OverlayButton() {
+  const [state, setState] = useState<OverlayState | null>(null)
+  const hotkey = useSettingsStore((store) => store.settings?.hotkeys.toggleOverlay)
+  useEffect(() => {
+    void window.glimpse.invoke('overlay:state', null).then(setState)
+    return subscribe('overlay:state', setState)
+  }, [])
+  if (state === null) return null
+  const visible = state.visible
+  return (
+    <button
+      type="button"
+      aria-pressed={visible}
+      disabled={state.panic}
+      onClick={() => void window.glimpse.invoke('overlay:set-visible', { visible: !visible }).then(setState)}
+      className={`group flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
+        visible ? 'border-violet/40 bg-violet/[0.12] shadow-[0_0_24px_-10px_rgb(139_92_246/0.9)]' : 'border-hairline bg-white/[0.03] hover:bg-white/[0.06]'
+      }`}
+    >
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${visible ? 'brand-gradient text-white' : 'bg-white/[0.06] text-text-muted'}`}>
+        {visible ? <Eye className="h-4 w-4" aria-hidden /> : <EyeOff className="h-4 w-4" aria-hidden />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[12.5px] font-semibold text-white">{state.panic ? 'Panic hide is on' : visible ? 'Overlay on' : 'Overlay off'}</span>
+        <span className="block truncate text-[11px] text-text-faint">{visible ? 'Click to hide' : 'Click to show'}{hotkey !== undefined ? ` · ${hotkey}` : ''}</span>
+      </span>
+    </button>
+  )
+}
 
 function ListeningStatus() {
   const [status, setStatus] = useState<AudioStatus | null>(null)
@@ -100,6 +132,7 @@ export function App() {
         </nav>
 
         <div className="space-y-3">
+          <OverlayButton />
           <ListeningStatus />
           {info !== null && (
             <div className="px-2 text-[10.5px] leading-relaxed text-text-faint">

@@ -48,6 +48,9 @@ export function GeneralPage() {
       </Card>
 
       <Card title="Overlay" icon={MonitorSmartphone} description="The answer panel on the right of your screen. It never appears in screen shares or recordings.">
+        <Row label="Show overlay when Glimpse starts" hint="Off: the overlay stays hidden until you turn it on (sidebar button, tray menu or hotkey)">
+          <Toggle checked={settings.overlayOnStart} onChange={(checked) => void update({ overlayOnStart: checked })} />
+        </Row>
         <Row label="Click-through" hint="Clicks pass through the panel to the app behind it; the header stays clickable">
           <Toggle checked={settings.clickThrough} onChange={(checked) => void update({ clickThrough: checked })} />
         </Row>

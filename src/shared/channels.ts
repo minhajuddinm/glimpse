@@ -12,6 +12,7 @@ export const INVOKE_CHANNELS = [
   'hotkeys:set',
   'hotkeys:status',
   'overlay:state',
+  'overlay:set-visible',
   'overlay:hitRects',
   'overlay:canaryAck',
   'protection:status',

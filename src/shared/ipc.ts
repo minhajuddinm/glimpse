@@ -63,6 +63,7 @@ export const ipcContract = {
     response: z.object({ failures: z.partialRecord(z.enum(HOTKEY_ACTIONS), z.string()) })
   },
   'overlay:state': { request: z.null(), response: OverlayStateSchema },
+  'overlay:set-visible': { request: z.object({ visible: z.boolean() }), response: OverlayStateSchema },
   'overlay:hitRects': { request: z.object({ rects: z.array(RectSchema).max(32) }), response: z.null() },
   'overlay:canaryAck': { request: z.object({ on: z.boolean() }), response: z.null() },
   'protection:status': { request: z.null(), response: ProtectionStatusSchema },

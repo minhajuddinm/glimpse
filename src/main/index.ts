@@ -316,7 +316,8 @@ async function startNormal(): Promise<void> {
     }).show()
   }
   showTray()
-  overlay.show()
+  // The overlay stays hidden until you show it (hotkey, tray or the app), unless you chose otherwise.
+  if (settings.get().overlayOnStart) overlay.show()
   showSettingsWindow()
   await secrets.load()
   await pipeline.start()
