@@ -9,7 +9,10 @@ export const SAMPLE_RATE = 16000
  */
 export const PAD_MS = 1200
 
-/** With a voice detector, a stream that has heard nothing for this long is replaced, so silence never accumulates. */
+/** Audio kept from before the voice detector fires, so the first word is not clipped. */
+export const PREROLL_MS = 600
+
+/** Kept for callers; with the gate, silence is never decoded so streams no longer need recycling. */
 export const IDLE_RECYCLE_MS = 10_000
 
 export type AsrEvent =
@@ -42,7 +45,8 @@ export class SourceRecognizer {
   private heardSpeech = false
   /** Audio time the voice detector last reported speech. */
   private lastVoiceAtMs = 0
-  private streamStartMs = 0
+  private preroll: Float32Array[] = []
+  private prerollMs = 0
 
   constructor(
     recognizer: OnlineRecognizer,
@@ -62,8 +66,32 @@ export class SourceRecognizer {
   }
 
   accept(samples: Float32Array): void {
-    this.stream.acceptWaveform({ sampleRate: SAMPLE_RATE, samples })
     this.audioMs += (samples.length / SAMPLE_RATE) * 1000
+    let speaking = false
+    if (this.vad !== null) {
+      this.vad.acceptWaveform(samples)
+      while (!this.vad.isEmpty()) this.vad.pop()
+      speaking = this.vad.isDetected()
+      if (speaking) {
+        this.heardSpeech = true
+        this.lastVoiceAtMs = this.audioMs
+      }
+      // Gate: while nobody speaks, keep only a short pre-roll instead of decoding silence (idle CPU ≈ 0).
+      if (!this.heardSpeech && this.lastText.length === 0) {
+        this.preroll.push(samples)
+        this.prerollMs += (samples.length / SAMPLE_RATE) * 1000
+        while (this.prerollMs > PREROLL_MS && this.preroll.length > 1) {
+          const dropped = this.preroll.shift()
+          if (dropped !== undefined) this.prerollMs -= (dropped.length / SAMPLE_RATE) * 1000
+        }
+        return
+      }
+    }
+    // The detector reports speech a little after it starts, so the pre-roll goes in first.
+    for (const chunk of this.preroll) this.stream.acceptWaveform({ sampleRate: SAMPLE_RATE, samples: chunk })
+    this.preroll = []
+    this.prerollMs = 0
+    this.stream.acceptWaveform({ sampleRate: SAMPLE_RATE, samples })
     while (this.recognizer.isReady(this.stream)) this.recognizer.decode(this.stream)
     const text = this.recognizer.getResult(this.stream).text.trim()
     if (text !== this.lastText) {
@@ -72,28 +100,19 @@ export class SourceRecognizer {
       if (text.length > 0) this.emit({ kind: 'partial', source: this.source, text })
     }
     // End of speech: the voice detector (fast, ~400 ms hangover) or, as a fallback, the recogniser's own endpoint.
-    if (this.vad !== null) {
-      this.vad.acceptWaveform(samples)
-      while (!this.vad.isEmpty()) this.vad.pop()
-      const speaking = this.vad.isDetected()
-      if (speaking) {
-        this.heardSpeech = true
-        this.lastVoiceAtMs = this.audioMs
-      }
-      if (this.heardSpeech && !speaking && this.lastText.length > 0) {
-        this.finish()
-        return
-      }
-    }
-    if (this.recognizer.isEndpoint(this.stream)) {
-      this.finish()
+    if (this.vad !== null && this.heardSpeech && !speaking) {
+      if (this.lastText.length > 0) this.finish()
+      else this.reset() // A cough or click with no words: drop it and go back to idle.
       return
     }
-    // Long silence: start a fresh stream so features never pile up over a 2-hour call.
-    if (this.vad !== null && !this.heardSpeech && this.lastText.length === 0 && this.audioMs - this.streamStartMs > IDLE_RECYCLE_MS) {
-      this.stream = this.recognizer.createStream()
-      this.streamStartMs = this.audioMs
-    }
+    if (this.recognizer.isEndpoint(this.stream)) this.finish()
+  }
+
+  private reset(): void {
+    this.stream = this.recognizer.createStream()
+    this.heardSpeech = false
+    this.lastText = ''
+    this.lastChangeAtMs = this.audioMs
   }
 
   /** Ends the current utterance now (endpoint, mute, device change). */
@@ -117,10 +136,6 @@ export class SourceRecognizer {
           computeMs
       })
     }
-    this.stream = this.recognizer.createStream()
-    this.streamStartMs = this.audioMs
-    this.heardSpeech = false
-    this.lastText = ''
-    this.lastChangeAtMs = this.audioMs
+    this.reset()
   }
 }

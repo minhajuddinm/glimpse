@@ -46,7 +46,7 @@ export function NotesPage() {
       <Card title="Your notes">
         <p className="mb-3 text-sm leading-relaxed text-white/70">
           Interview notes, prepared answers, your resume, the job description. Glimpse searches them before every answer and, when a
-          question matches one of your prepared answers, shows it immediately. Files are copied into the notes folder inside Glimpse and
+          question matches one of your prepared answers, shows it immediately. Files are copied into the notes folder shown below and
           never leave this PC except as short snippets sent with a question.
         </p>
         <code className="mb-3 block truncate rounded bg-ink px-2 py-1 text-xs text-white/70" title={status.folder}>

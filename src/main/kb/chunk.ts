@@ -94,7 +94,9 @@ export function chunkDocument(text: string): Chunk[] {
   const lines = text.replace(/\r\n/g, '\n').split('\n')
   const { chunks, used } = extractQa(lines)
   const rest = lines.filter((_, index) => !used.has(index)).join('\n')
-  return [...chunks, ...passages(rest)]
+  // A title on its own ("# Interview prep") is not a passage worth retrieving.
+  const meaningful = passages(rest).filter((chunk) => !/^#{1,6}\s/.test(chunk.text) || chunk.text.split(/\s+/).length > 12)
+  return [...chunks, ...meaningful]
 }
 
 /** Q&A lists from JSON: [{question, answer}] or {questions: [...]} with q/a or question/answer keys. */

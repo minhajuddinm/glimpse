@@ -26,7 +26,7 @@ export function CompanionPage() {
     <div className="space-y-5">
       <Card>
         <p className="mb-2 text-sm leading-relaxed text-white/70">
-          Read the live transcript, and later the answers, on your phone or another computer. This is useful when the overlay
+          Read the live transcript and answers on your phone or another computer. This is useful when the overlay
           isn&apos;t visible to you, for example when you view this PC through Moonlight or Parsec. The page is served from this
           PC only. Nothing goes through the internet, and each link carries its own access code.
         </p>
@@ -51,7 +51,7 @@ export function CompanionPage() {
       {info !== null && settings.companionEnabled && (
         <Card title="Open it on your device">
           <div className="flex flex-wrap items-start gap-6">
-            {info.qr !== null && <img src={info.qr} alt="QR code for the companion page" className="h-44 w-44 rounded-lg bg-white p-1" />}
+            {info.qr !== null && settings.companionLan && <img src={info.qr} alt="QR code for the companion page" className="h-44 w-44 rounded-lg bg-white p-1" />}
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex items-center gap-2">
                 <Badge tone={info.running ? 'good' : 'bad'}>{info.running ? 'running' : 'stopped'}</Badge>
@@ -69,7 +69,7 @@ export function CompanionPage() {
               ))}
               <p className="text-xs text-white/45">
                 Treat these links like a password: anyone on your network with one can read the transcript. The first time you
-                allow other devices, Windows asks whether Glimpse (shown as &quot;Electron&quot;) may use the network; allow private
+                allow other devices, Windows asks whether Glimpse may use the network; allow private
                 networks for your phone to connect.
               </p>
               <Button tone="ghost" onClick={() => void window.glimpse.invoke('companion:regenerate', null).then(setInfo)}>

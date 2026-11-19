@@ -154,7 +154,7 @@ export class CompanionServer {
   private handle(req: IncomingMessage, res: ServerResponse): void {
     const url = new URL(req.url ?? '/', 'http://companion.local')
     const ip = req.socket.remoteAddress ?? 'unknown'
-    if (req.method !== 'GET') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
       this.send(res, 405, 'text/plain', 'Method not allowed')
       return
     }

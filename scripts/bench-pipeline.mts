@@ -33,7 +33,7 @@ if (model === undefined) throw new Error(`Unknown model ${modelId}`)
 if (!existsSync(join(root, 'models', model.dir))) throw new Error(`Model not installed: npm run fetch-models -- --only ${modelId}`)
 
 const sentences = readFileSync(join(root, 'bench/sentences.txt'), 'utf8').split(/\r?\n/).filter((line) => line.trim().length > 0)
-const recognizer = new sherpa.OnlineRecognizer(recognizerConfig(model, join(root, 'models'), 2, endpoint))
+const recognizer = new sherpa.OnlineRecognizer(recognizerConfig(model, join(root, 'models'), Number(arg('threads', '2')), endpoint))
 const CHUNK = SAMPLE_RATE / 10
 
 const latencies: number[] = []
@@ -107,3 +107,4 @@ console.log(`WER ${((errors / Math.max(1, words)) * 100).toFixed(1)}%`)
 const pass = latencies.length >= 20 && p95 <= 1200 && splits === 0
 console.log(`G6 (p95 <= 1200 ms over >= 20 utterances, no split sentences): ${pass ? 'PASS' : 'FAIL'}`)
 process.exitCode = pass ? 0 : 1
+process.on("exit", () => { const u = process.cpuUsage(); console.log(`cpu time ${((u.user + u.system) / 1e6).toFixed(1)} s, wall ${(process.uptime()).toFixed(1)} s`) })

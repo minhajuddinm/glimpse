@@ -103,3 +103,10 @@ describe('KbStore and hybrid search', () => {
     expect(cosine(new Float32Array([1, 0]), new Float32Array([1, 0]))).toBe(1)
   })
 })
+
+describe('chunkDocument headings', () => {
+  it('does not index a lone title as a passage', () => {
+    const chunks = chunkDocument('# Interview prep (ZZTEST)\n\nQ: Why us?\nA: Your product helps teachers.')
+    expect(chunks.map((chunk) => chunk.kind)).toEqual(['qa'])
+  })
+})

@@ -75,7 +75,7 @@ function ResultView({ result }: { result: SelfTestResult }) {
       <div className="flex flex-wrap items-center gap-3">
         <Badge tone={verdictTone(result.verdict)}>{result.verdict}</Badge>
         <span className="text-xs text-white/50">
-          {new Date(result.ranAt).toLocaleString()} · display {result.displayId} · scale {result.scaleFactor}× · control saw{' '}
+          {new Date(result.ranAt).toLocaleString()} · scale {result.scaleFactor}× · control saw{' '}
           {(result.controlDetectedFraction * 100).toFixed(0)}% of the overlay
         </span>
       </div>

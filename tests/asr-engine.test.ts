@@ -155,12 +155,18 @@ describe('SourceRecognizer with a voice detector', () => {
     expect(events.filter((event) => event.kind === 'final').map((event) => event.text)).toEqual(['what is the difference'])
   })
 
-  it('replaces an idle stream after 10 s of silence so memory stays flat', () => {
-    const recognizer = new FakeRecognizer(['x'])
-    const source = new SourceRecognizer(recognizer, 'them', () => undefined, () => 0, new FakeVad(3))
-    for (let i = 0; i < 99; i++) source.accept(quiet())
-    expect(recognizer.streams).toHaveLength(1)
-    for (let i = 0; i < 3; i++) source.accept(quiet())
-    expect(recognizer.streams).toHaveLength(2)
+  it('never feeds silence to the recogniser, but keeps a pre-roll so the first word is heard', () => {
+    const recognizer = new FakeRecognizer(['hello'])
+    const events: AsrEvent[] = []
+    const source = new SourceRecognizer(recognizer, 'them', (event) => events.push(event), () => 0, new FakeVad(3))
+    for (let i = 0; i < 600; i++) source.accept(quiet())
+    const stream = recognizer.streams[0]
+    expect(stream?.padded).toBe(0)
+    expect(stream?.words).toEqual([])
+    source.accept(loud())
+    for (let i = 0; i < 5; i++) source.accept(quiet())
+    expect(events.filter((e) => e.kind === 'final').map((e) => e.text)).toEqual(['hello'])
+    // Only the 600 ms pre-roll and the hangover after speech went in, not a minute of silence.
+    expect(recognizer.streams[0]?.padded ?? 0).toBeLessThanOrEqual(CHUNK * 12 + (SAMPLE_RATE * 1200) / 1000)
   })
 })

@@ -56,6 +56,13 @@ export function AnswersPage() {
   const [contextSaved, setContextSaved] = useState(true)
   const [question, setQuestion] = useState('')
   const [answers, setAnswers] = useState<AnswersSnapshot>({ answers: [] })
+  const [asked, setAsked] = useState<string | null>(null)
+  const ask = (): void => {
+    const text = question.trim()
+    if (text === '') return
+    setAsked(text)
+    void window.glimpse.invoke('answers:ask', { question: text })
+  }
 
   useEffect(() => {
     void window.glimpse.invoke('keys:status', null).then(setKeys)
@@ -65,7 +72,8 @@ export function AnswersPage() {
   }, [])
 
   if (settings === null || keys === null) return <div className="text-sm text-white/50">Loading…</div>
-  const latest = answers.answers.find((answer) => answer.status !== 'cancelled')
+  // Show the answer to what was typed here, not a newer auto-answer from the live call.
+  const latest = asked === null ? undefined : answers.answers.find((answer) => answer.status !== 'cancelled' && answer.question === asked)
 
   return (
     <div className="space-y-5">
@@ -144,12 +152,12 @@ export function AnswersPage() {
               setQuestion(event.target.value)
             }}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && question.trim() !== '') void window.glimpse.invoke('answers:ask', { question })
+              if (event.key === 'Enter') ask()
             }}
             placeholder="Type a question the other side might ask"
             className="min-w-0 flex-1 rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white placeholder:text-white/30"
           />
-          <Button onClick={() => void window.glimpse.invoke('answers:ask', { question })} disabled={question.trim() === ''}>
+          <Button onClick={ask} disabled={question.trim() === ''}>
             Ask
           </Button>
         </div>
@@ -157,7 +165,9 @@ export function AnswersPage() {
           <div className="mt-4 rounded-lg border border-hairline bg-ink p-3">
             <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-white/50">
               <Badge tone={latest.status === 'error' ? 'bad' : latest.status === 'done' ? 'good' : 'warn'}>{latest.status}</Badge>
-              <span>{latest.origin === 'notes' ? 'from your notes' : latest.origin === 'notes+model' ? 'model + your notes' : latest.model ?? ''}</span>
+              <span>
+                {latest.origin === 'notes' ? 'from your notes' : latest.origin === 'notes+model' ? `${latest.model ?? 'model'} + your notes` : latest.model ?? ''}
+              </span>
               {latest.firstTextAt !== null && <span>first words after {Math.max(0, latest.firstTextAt - latest.askedAt)} ms</span>}
             </div>
             <p className="whitespace-pre-wrap text-sm text-white">{latest.status === 'error' ? latest.error : latest.text || '…'}</p>

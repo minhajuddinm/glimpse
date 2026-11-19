@@ -1,4 +1,12 @@
-import type { ReactNode } from 'react'
+import { cloneElement, isValidElement, type ReactNode } from 'react'
+
+/** A lone input/select in a row is named by the row label, for screen readers and UI automation. */
+function labelled(children: ReactNode, label: string): ReactNode {
+  if (isValidElement<{ 'aria-label'?: string }>(children) && (children.type === 'input' || children.type === 'select')) {
+    return cloneElement(children, { 'aria-label': label })
+  }
+  return children
+}
 
 export function Row({
   label,
@@ -17,7 +25,7 @@ export function Row({
         <div className="text-sm font-medium text-white">{label}</div>
         <div className={`text-xs ${warn ? 'text-amber-300' : 'text-white/50'}`}>{hint}</div>
       </div>
-      {children}
+      {labelled(children, label)}
     </div>
   )
 }

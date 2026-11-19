@@ -80,13 +80,16 @@ it('G11: reworded questions find their prepared answer; unrelated ones do not', 
     console.log(`  ${top?.question === expected ? 'HIT ' : 'MISS'} sim=${top?.similarity?.toFixed(3) ?? '-'} ${ms.toFixed(0)}ms  "${asked}" → "${top?.question ?? '-'}"`)
   }
   let falseInstant = 0
+  let offCited = 0
   for (const asked of OFF_TOPIC) {
     const vec = (await embedder.embed([asked]))[0] ?? null
     const hits = hybridSearch(store, asked, vec)
     if (instantAnswer(hits) !== null) falseInstant++
+    if (hits.length > 0) offCited++
     console.log(`  OFF  sim=${hits[0]?.similarity?.toFixed(3) ?? '-'}  "${asked}" → "${hits[0]?.question ?? '-'}"`)
   }
-  console.log(`G11 hit@1 ${hits1}/${PARAPHRASES.length}, instant ${instant}/${PARAPHRASES.length}, false instant ${falseInstant}/${OFF_TOPIC.length} (threshold ${INSTANT_SIMILARITY})`)
+  console.log(`G11 hit@1 ${hits1}/${PARAPHRASES.length}, instant ${instant}/${PARAPHRASES.length}, false instant ${falseInstant}/${OFF_TOPIC.length} (threshold ${INSTANT_SIMILARITY}), unrelated citing notes ${offCited}/${OFF_TOPIC.length}`)
   expect(hits1).toBe(PARAPHRASES.length)
   expect(falseInstant).toBe(0)
+  expect(offCited).toBe(0)
 }, 120_000)

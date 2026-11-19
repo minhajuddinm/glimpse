@@ -42,3 +42,5 @@ One line per deviation from BRIEF v2, with the reason.
 - **Sonnet "elaborate"** uses the server-side fallback beta so a classifier decline still returns an answer.
 - **Groq is text-only**: screenshot questions need the Anthropic key.
 - **Installed app keeps notes in `Documents\Glimpse Notes`** (dev keeps `<app>/notes`): the install folder can be read-only and is wiped on uninstall/update. The embedding model ships via `extraResources` and loads from `process.resourcesPath`.
+- **Speech engine idles**: the voice detector now gates decoding (600 ms pre-roll keeps the first word), and decoding uses 1 thread instead of 2 (same p95 543 ms and WER 0.9% in `bench:pipeline`, 2.5× less CPU; ONNX Runtime's worker threads spin between runs). Installed app idle CPU went from ~160% to ~9% of one core.
+- **Notes relevance cutoff 0.55**: passages below this similarity are neither sent to the model nor cited (unrelated questions peaked at 0.50, rewordings start at 0.61). `bench:kb` now also asserts that unrelated questions cite no notes.

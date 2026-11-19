@@ -109,7 +109,7 @@ export class AsrService {
         this.start()
       }, delay)
     })
-    child.postMessage({ type: 'init', modelsRoot: this.options.modelsRoot, model, threads: 2 })
+    child.postMessage({ type: 'init', modelsRoot: this.options.modelsRoot, model, threads: 1 })
   }
 
   send(source: Source, samples: Float32Array): void {

@@ -146,6 +146,12 @@ export const KEYWORD_BONUS = 0.1
 export const INSTANT_SIMILARITY = 0.57
 
 /**
+ * Below this meaning similarity a passage is not relevant: it is neither sent to the model nor
+ * cited. Unrelated questions scored up to 0.50 against interview notes, rewordings 0.61+ (npm run bench:kb).
+ */
+export const RELEVANT_SIMILARITY = 0.55
+
+/**
  * Hybrid search. With embeddings: rank by meaning (cosine similarity), plus a small
  * bonus for keyword (BM25) matches so an exact term helps without overruling meaning.
  * (Rank fusion was tried first: one shared word like "handle" outvoted a clearly
@@ -168,6 +174,7 @@ export function hybridSearch(store: KbStore, query: string, queryVec: Float32Arr
     }))
   }
   return ranked
+    .filter((hit) => queryVec === null || (hit.similarity ?? 0) >= RELEVANT_SIMILARITY)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .flatMap(({ id, score, similarity }) => {
