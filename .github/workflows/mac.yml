@@ -36,7 +36,7 @@ jobs:
       - run: npm run dist
       - name: Check the packaged app
         run: |
-          APP="release/mac$([ '${{ matrix.arch }}' = arm64 ] && echo -arm64)/Glimpse.app"
+          if [ "${{ matrix.arch }}" = arm64 ]; then APP=release/mac-arm64/Glimpse.app; else APP=release/mac/Glimpse.app; fi
           ls "$APP/Contents/Resources/models"
           codesign --verify --deep --strict "$APP" && echo "signature ok"
       - uses: actions/upload-artifact@v4
