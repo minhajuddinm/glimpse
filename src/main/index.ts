@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { release } from 'node:os'
 import { join } from 'node:path'
-import { Notification, app, globalShortcut, type Tray } from 'electron'
+import { Notification, app, globalShortcut, systemPreferences, type Tray } from 'electron'
 import { broadcast } from './broadcast'
 import { isHeadless, parseCli } from './cli'
 import { openDatabase, type Db } from './db'
@@ -320,6 +320,11 @@ async function startNormal(): Promise<void> {
   if (settings.get().overlayOnStart) overlay.show()
   showSettingsWindow()
   await secrets.load()
+  if (process.platform === 'darwin') {
+    // macOS asks once for the microphone; system audio is asked for on first capture (NSAudioCaptureUsageDescription).
+    const granted = await systemPreferences.askForMediaAccess('microphone').catch(() => false)
+    if (!granted) console.warn('[audio] microphone access was not granted; allow it in System Settings → Privacy & Security → Microphone')
+  }
   await pipeline.start()
   void kb.init().catch((error: unknown) => {
     console.error('[notes] could not start', error)
@@ -355,6 +360,10 @@ function startApp(): void {
   }
   app.on('second-instance', () => {
     showSettingsWindow()
+  })
+  // macOS: clicking the Dock icon with no window open brings Settings back.
+  app.on('activate', () => {
+    if (app.isReady()) showSettingsWindow()
   })
   // Glimpse lives in the tray; closing the settings window must not quit it.
   app.on('window-all-closed', () => undefined)

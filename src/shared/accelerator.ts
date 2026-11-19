@@ -174,3 +174,14 @@ export const HotkeysSchema = z.object({
   clearAnswers: AcceleratorSchema.default(DEFAULT_HOTKEYS.clearAnswers)
 })
 export type Hotkeys = z.infer<typeof HotkeysSchema>
+
+const MAC_SYMBOLS: Readonly<Record<string, string>> = { Ctrl: '⌃', Alt: '⌥', Shift: '⇧', Super: '⌘', Enter: '↩', Space: 'Space' }
+
+/** How a shortcut is shown to the user: "Ctrl+Alt+G" on Windows, "⌃⌥G" on macOS. */
+export function displayAccelerator(accelerator: string, mac: boolean): string {
+  if (!mac) return accelerator
+  const parts = accelerator.split('+')
+  // "Ctrl++": the key itself is "+".
+  if (accelerator.endsWith('++')) parts.splice(-2, 2, '+')
+  return parts.map((part) => MAC_SYMBOLS[part] ?? part).join('')
+}

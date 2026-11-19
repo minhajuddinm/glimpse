@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Cpu, Eraser, Mic, MicOff, RotateCw, ScrollText, Speaker, VolumeX, type LucideIcon } from 'lucide-react'
 import type { AudioDevice, AudioLevels, AudioStatus, CaptureState, SourceStatus, TranscriptSnapshot } from '../../../shared/transcript'
 import { subscribe } from '../ipc'
+import { OS_NAME } from '../platform'
 import { useSettingsStore } from '../store'
 import { Badge, Button, Card, EmptyState, Loading, Row, Select } from '../ui'
 
@@ -123,15 +124,15 @@ export function AudioPage() {
       </div>
 
       <Card title="Devices" icon={Mic}>
-        <Row label="Microphone" hint="If it is unplugged, Glimpse falls back to the Windows default and switches back when it returns">
+        <Row label="Microphone" hint="If it is unplugged, Glimpse falls back to the system default and switches back when it returns">
           <Select
             value={settings.micDeviceId ?? ''}
-            options={[{ value: '', label: 'Windows default' }, ...devices.map((device) => ({ value: device.deviceId, label: device.label }))]}
+            options={[{ value: '', label: 'System default' }, ...devices.map((device) => ({ value: device.deviceId, label: device.label }))]}
             onChange={(value) => void update({ micDeviceId: value === '' ? null : value })}
           />
         </Row>
         <p className="mt-3 text-xs leading-relaxed text-text-faint">
-          “Them” is whatever plays through your default speakers or headset. To capture another output, make it the Windows default.
+          “Them” is whatever plays through your default speakers or headset. To capture another output, make it the {OS_NAME} default.
         </p>
       </Card>
 

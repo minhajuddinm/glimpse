@@ -45,9 +45,10 @@ function RemoteBanner() {
 
 function ProtectionCard({ state }: { state: OverlayState | null }) {
   const protection = state?.protection
-  const tone = protection === undefined ? 'neutral' : protection.verified && protection.method === 'exclude-from-capture' ? 'good' : 'warn'
+  const excluded = protection !== undefined && protection.verified && (protection.method === 'exclude-from-capture' || protection.method === 'sharing-none')
+  const tone = protection === undefined ? 'neutral' : excluded ? 'good' : 'warn'
   return (
-    <Card title="Capture protection" icon={ShieldCheck} description="What Windows reports for the overlay window right now.">
+    <Card title="Capture protection" icon={ShieldCheck} description="What the operating system reports for the overlay window right now.">
       {protection === undefined ? (
         <div className="text-sm text-white/50">Waiting for the overlay…</div>
       ) : (
@@ -56,7 +57,9 @@ function ProtectionCard({ state }: { state: OverlayState | null }) {
             <Badge tone={tone}>
               {protection.method === 'exclude-from-capture' && protection.verified
                 ? 'Excluded from capture · verified'
-                : protection.method === 'monitor-only'
+                : protection.method === 'sharing-none' && protection.verified
+                  ? 'Hidden from sharing · run the test per app'
+                  : protection.method === 'monitor-only'
                   ? 'Capture-safe mode (black box in captures)'
                   : 'Not confirmed'}
             </Badge>

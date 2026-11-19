@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AudioLines, Eye, EyeOff, Keyboard, MessageSquareText, NotebookPen, ScanEye, Settings2, Smartphone, type LucideIcon } from 'lucide-react'
+import { displayAccelerator } from '../../shared/accelerator'
 import type { OverlayState } from '../../shared/capture'
 import type { AudioStatus } from '../../shared/transcript'
 import { subscribe } from './ipc'
@@ -10,6 +11,7 @@ import { CompanionPage } from './pages/CompanionPage'
 import { GeneralPage } from './pages/GeneralPage'
 import { HotkeysPage } from './pages/HotkeysPage'
 import { NotesPage } from './pages/NotesPage'
+import { IS_MAC } from './platform'
 import { useSettingsStore } from './store'
 import { ErrorBanner, PageHeader, StatusDot } from './ui'
 
@@ -57,7 +59,7 @@ function OverlayButton() {
       </span>
       <span className="min-w-0">
         <span className="block text-[12.5px] font-semibold text-white">{state.panic ? 'Panic hide is on' : visible ? 'Overlay on' : 'Overlay off'}</span>
-        <span className="block truncate text-[11px] text-text-faint">{visible ? 'Click to hide' : 'Click to show'}{hotkey !== undefined ? ` · ${hotkey}` : ''}</span>
+        <span className="block truncate text-[11px] text-text-faint">{visible ? 'Click to hide' : 'Click to show'}{hotkey !== undefined ? ` · ${displayAccelerator(hotkey, IS_MAC)}` : ''}</span>
       </span>
     </button>
   )
@@ -138,6 +140,7 @@ export function App() {
             <div className="px-2 text-[10.5px] leading-relaxed text-text-faint">
               v{info.version} · Electron {info.electron}
               {info.windowsBuild !== null && <div>Windows build {info.windowsBuild}</div>}
+              {info.platform === 'darwin' && <div>macOS</div>}
             </div>
           )}
         </div>

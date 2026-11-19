@@ -5,6 +5,8 @@ import type { AnswersSnapshot } from '../../../shared/answers'
 import type { TranscriptSnapshot } from '../../../shared/transcript'
 import { AnswerCards } from './AnswerCards'
 import { subscribe } from '../ipc'
+import { IS_MAC } from '../platform'
+import { displayAccelerator } from '../../../shared/accelerator'
 
 interface Paint {
   readonly on: boolean
@@ -125,7 +127,7 @@ export function Overlay() {
               {answers.answers.filter((answer) => answer.status !== 'cancelled').length === 0 ? (
                 <p className="px-0.5 text-[12px] leading-relaxed text-white/35">
                   Answers appear here when the other side asks something
-                  {hotkeys !== undefined ? ` — or press ${hotkeys.answerNow} to answer the last question` : ''}. This panel is excluded from screen capture.
+                  {hotkeys !== undefined ? ` — or press ${displayAccelerator(hotkeys.answerNow, IS_MAC)} to answer the last question` : ''}. This panel is excluded from screen capture.
                 </p>
               ) : (
                 <AnswerCards answers={answers.answers} regenerateKey={hotkeys?.regenerate ?? ''} />
@@ -152,19 +154,19 @@ export function Overlay() {
             {hotkeys !== undefined && (
               <>
                 <span className="flex items-center gap-1.5">
-                  <Kbd>{hotkeys.toggleOverlay}</Kbd> show / hide
+                  <Kbd>{displayAccelerator(hotkeys.toggleOverlay, IS_MAC)}</Kbd> show / hide
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Kbd>{hotkeys.answerNow}</Kbd> answer
+                  <Kbd>{displayAccelerator(hotkeys.answerNow, IS_MAC)}</Kbd> answer
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Kbd>{hotkeys.elaborate}</Kbd> more
+                  <Kbd>{displayAccelerator(hotkeys.elaborate, IS_MAC)}</Kbd> more
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Kbd>{hotkeys.toggleClickThrough}</Kbd> click-through
+                  <Kbd>{displayAccelerator(hotkeys.toggleClickThrough, IS_MAC)}</Kbd> click-through
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Kbd>{hotkeys.panicHide}</Kbd> panic
+                  <Kbd>{displayAccelerator(hotkeys.panicHide, IS_MAC)}</Kbd> panic
                 </span>
               </>
             )}

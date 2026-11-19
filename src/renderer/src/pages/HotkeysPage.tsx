@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type KeyboardEvent } from 'react'
-import { HOTKEY_ACTIONS, HOTKEY_LABELS, acceleratorFromKeyEvent, type HotkeyAction } from '../../../shared/accelerator'
+import { HOTKEY_ACTIONS, HOTKEY_LABELS, acceleratorFromKeyEvent, displayAccelerator, type HotkeyAction } from '../../../shared/accelerator'
+import { IS_MAC } from '../platform'
 import { errorMessage } from '../ipc'
 import { useSettingsStore } from '../store'
 import { Keyboard, RefreshCw } from 'lucide-react'
@@ -82,7 +83,7 @@ export function HotkeysPage() {
                       : 'border-hairline-strong bg-ink/70 text-white hover:border-white/20'
                 }`}
               >
-                {recording === action ? 'Press the new shortcut…' : settings.hotkeys[action]}
+                {recording === action ? 'Press the new shortcut…' : displayAccelerator(settings.hotkeys[action], IS_MAC)}
               </button>
               <Button
                 tone="subtle"

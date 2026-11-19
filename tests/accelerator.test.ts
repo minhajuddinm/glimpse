@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AcceleratorSchema,
   DEFAULT_HOTKEYS,
+  displayAccelerator,
   HOTKEY_ACTIONS,
   acceleratorFromKeyEvent,
   normalizeAccelerator,
@@ -60,5 +61,16 @@ describe('defaults', () => {
     const values = HOTKEY_ACTIONS.map((action) => DEFAULT_HOTKEYS[action])
     for (const value of values) expect(AcceleratorSchema.parse(value)).toBe(value)
     expect(new Set(values).size).toBe(values.length)
+  })
+})
+
+describe('displayAccelerator', () => {
+  it('keeps the Windows spelling', () => {
+    expect(displayAccelerator('Ctrl+Alt+G', false)).toBe('Ctrl+Alt+G')
+  })
+  it('uses macOS symbols', () => {
+    expect(displayAccelerator('Ctrl+Alt+G', true)).toBe('⌃⌥G')
+    expect(displayAccelerator('Super+Shift+Enter', true)).toBe('⌘⇧↩')
+    expect(displayAccelerator('Ctrl++', true)).toBe('⌃+')
   })
 })

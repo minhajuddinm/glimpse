@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, Copy, KeyRound, QrCode, Smartphone, Wifi } from 'lucide-react'
 import type { CompanionInfo } from '../../../shared/transcript'
 import { subscribe } from '../ipc'
+import { IS_MAC } from '../platform'
 import { useSettingsStore } from '../store'
 import { Badge, Button, Card, Loading, Notice, Row, Toggle } from '../ui'
 
@@ -66,7 +67,7 @@ export function CompanionPage() {
               {!settings.companionLan && <p className="text-xs text-text-faint">Turn on “Allow other devices” to get a QR code for your phone.</p>}
               <Notice tone="warn">
                 Treat these links like a password: anyone on your network with one can read the transcript. The first time you allow other devices,
-                Windows asks whether Glimpse may use the network — allow private networks.
+                {IS_MAC ? "macOS asks whether Glimpse may find devices on your local network — allow it." : "Windows asks whether Glimpse may use the network — allow private networks."}
               </Notice>
               <Button tone="ghost" size="sm" icon={KeyRound} onClick={() => void window.glimpse.invoke('companion:regenerate', null).then(setInfo)}>
                 New access code

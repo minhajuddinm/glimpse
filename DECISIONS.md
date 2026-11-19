@@ -48,3 +48,13 @@ One line per deviation from BRIEF v2, with the reason.
 - **Notes folder is user-selectable** (Settings → Notes → Change folder…), never inside the install folder.
 - **No GPU**: sherpa-onnx's npm build is CPU-only, and local compute is ~1% of the answer time (latency is the 0.4 s end-of-speech wait plus the cloud model). A CUDA build would add ~2 GB of runtime for no visible gain.
 - **UI redesign** with the UI/UX Pro Max design system ("Modern Dark": layered glass surfaces, ambient glow, violet→indigo accent from the logo, Lucide SVG icons). Kept the brand violet instead of the suggested amber, and Segoe UI Variable (native on Windows 11, works offline) instead of a web font. Sidebar navigation with live listening status; accessible switches (role="switch"), visible focus rings, reduced-motion support.
+
+## macOS port (started 2026-11-19, built in CI, not yet run on a Mac)
+- **Same codebase, platform branches only where the OS differs**: capture hiding, data paths, the overlay window type, microphone permission and packaging. Everything else (speech, notes, answers, UI) is shared.
+- **Capture hiding on macOS = `setContentProtection` (NSWindowSharingNone), with a known gap**: since macOS 15, apps that record through ScreenCaptureKit can still capture such windows, and Apple has no public API to prevent it. Glimpse reports the method as `sharing-none`, never claims "verified excluded", and asks the user to run the capture test with each app they use.
+- **Overlay is a non-activating `panel`** visible on all Spaces and over full-screen apps, so it never takes focus (the macOS equivalent of `focusable: false` + `showInactive`).
+- **Data in the standard per-user places on macOS** (`~/Library/Application Support/Glimpse`, `~/Documents/Glimpse Notes`): the "keep data on the install drive" rule is Windows-only, since /Applications is not writable.
+- **System audio through Electron's loopback** (CoreAudio tap on macOS 14.2+, needs `NSAudioCaptureUsageDescription`); minimum macOS 13. The handler still passes a screen source, so macOS also asks for Screen Recording permission.
+- **Ad-hoc signed, not notarized** (no paid Apple Developer ID): Apple silicon needs at least an ad-hoc signature to run. First launch needs right-click → Open, or `xattr -cr /Applications/Glimpse.app`.
+- **One DMG per architecture, built on a matching runner** (`macos-15` arm64, `macos-15-intel` x64): the speech addon is installed per arch by npm. The workflow is manual or tag-triggered because macOS runner minutes count 10× on a private repo.
+- **Shortcuts keep Ctrl+Alt on macOS** (Control+Option, shown as ⌃⌥): ⌘ combinations collide with app shortcuts. Users can rebind to ⌘ in Settings.

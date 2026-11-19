@@ -22,7 +22,12 @@ function installBase(): string {
   return app.isPackaged ? dirname(dirname(app.getPath('exe'))) : app.getAppPath()
 }
 
+/**
+ * True when the default per-user locations should be used. Always on macOS and Linux: there
+ * are no drive letters, and /Applications is not writable for a normal user.
+ */
 function onSystemDrive(path: string): boolean {
+  if (process.platform !== 'win32') return true
   const system = `${(process.env.SystemDrive ?? 'C:').toUpperCase()}${sep}`
   return parse(resolve(path)).root.toUpperCase() === system
 }
@@ -44,7 +49,10 @@ export function dataPaths(): DataPaths {
 
 /** The folder the app is installed in (packaged only): notes must not live there. */
 export function installFolder(): string | null {
-  return app.isPackaged ? dirname(app.getPath('exe')) : null
+  if (!app.isPackaged) return null
+  const exeDir = dirname(app.getPath('exe'))
+  // macOS: Glimpse.app/Contents/MacOS/Glimpse — the whole bundle is replaced on update.
+  return process.platform === 'darwin' ? dirname(dirname(exeDir)) : exeDir
 }
 
 /**

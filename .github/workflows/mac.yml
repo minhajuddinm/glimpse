@@ -1,0 +1,46 @@
+name: macOS build
+
+# Manual (Actions → macOS build → Run workflow) or on a version tag: macOS runners cost
+# 10x the minutes of Linux ones on a private repo, so this does not run on every push.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  dmg:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: models-${{ hashFiles('src/main/asr/models.json') }}
+      - run: npm run fetch-models -- --only kroko-en,silero-vad,bge-small-en
+      - run: npm run dist
+      - name: Check the packaged app
+        run: |
+          APP="release/mac$([ '${{ matrix.arch }}' = arm64 ] && echo -arm64)/Glimpse.app"
+          ls "$APP/Contents/Resources/models"
+          codesign --verify --deep --strict "$APP" && echo "signature ok"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Glimpse-mac-${{ matrix.arch }}
+          path: release/*.dmg
+          if-no-files-found: error

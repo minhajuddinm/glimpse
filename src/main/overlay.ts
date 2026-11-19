@@ -116,10 +116,14 @@ export class OverlayController {
       fullscreenable: false,
       show: false,
       title: 'Glimpse overlay',
+      // macOS: a non-activating panel never steals focus from the app you are typing in.
+      ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
       webPreferences: { ...SECURE_WEB_PREFERENCES, preload: join(__dirname, '../preload/index.js') }
     })
     this.win = win
     win.setAlwaysOnTop(true, 'screen-saver')
+    // macOS: follow the user across Spaces and float over full-screen apps (Zoom, Keynote).
+    if (process.platform === 'darwin') win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
     // Request exclusion before anything is ever painted. Windows applies it on show; show() verifies it.
     await initProtection()
     this.protection = applyProtection(win, true, this.options.windowsBuild)

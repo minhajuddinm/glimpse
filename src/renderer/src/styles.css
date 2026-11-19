@@ -3,7 +3,7 @@
 /*
  * Glimpse design tokens ("Modern Dark", from the UI/UX Pro Max design system):
  * layered dark surfaces, a violet→indigo brand accent matching the logo, soft glow,
- * Segoe UI Variable (native on Windows 11, no network font needed).
+ * Segoe UI Variable on Windows 11, San Francisco on macOS (both native, no network font needed).
  */
 @theme {
   --color-ink: #0a0a12;
@@ -18,8 +18,8 @@
   --color-text: #ececf4;
   --color-text-muted: rgb(236 236 244 / 0.62);
   --color-text-faint: rgb(236 236 244 / 0.42);
-  --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
-  --font-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-up: fade-up 320ms var(--ease-out-expo) both;
   --animate-shimmer: shimmer 1.6s linear infinite;

@@ -38,7 +38,7 @@ export function showSettingsWindow(): BrowserWindow {
       closeNoticeShown = true
       new Notification({
         title: 'Glimpse is still running',
-        body: 'It keeps listening in the background. Open it again from the tray icon, or quit it there.',
+        body: `It keeps listening in the background. Open it again from the ${process.platform === 'darwin' ? 'menu bar' : 'tray'} icon, or quit it there.`,
         icon: join(app.getAppPath(), 'resources', 'icon.png')
       }).show()
     }

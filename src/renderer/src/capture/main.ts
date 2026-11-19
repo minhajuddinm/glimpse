@@ -173,7 +173,7 @@ const microphone = new SourceCapture('you', async () => {
       // The chosen device is gone or busy: fall back to the Windows default so the call keeps working.
       return {
         stream: await navigator.mediaDevices.getUserMedia({ audio: constraints(null) }),
-        note: 'The selected microphone is not available; using the Windows default.'
+        note: 'The selected microphone is not available; using the system default.'
       }
     }
   }

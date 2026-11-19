@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bot, CheckCircle2, KeyRound, Send, ShieldCheck, Sparkles, UserRound, Zap } from 'lucide-react'
 import type { AnswersSnapshot, KeyStatus } from '../../../shared/answers'
 import { errorMessage, subscribe } from '../ipc'
+import { IS_MAC, OS_NAME } from '../platform'
 import { useSettingsStore } from '../store'
 import { Badge, Button, Card, ErrorBanner, Loading, Notice, Row, Select, TextArea, TextInput, Toggle } from '../ui'
 
@@ -103,7 +104,7 @@ export function AnswersPage() {
   return (
     <>
       <Card title="AI provider" icon={Bot} description="Bring your own key. Glimpse has no server: questions go straight from this PC to the provider you choose.">
-        {!keys.encryptionAvailable && <ErrorBanner message="Windows cannot encrypt secrets on this account, so API keys cannot be saved." />}
+        {!keys.encryptionAvailable && <ErrorBanner message={`${OS_NAME} cannot encrypt secrets on this account, so API keys cannot be saved.`} />}
         <div className="space-y-3">
           <KeyRow
             label="Anthropic · Claude"
@@ -136,7 +137,7 @@ export function AnswersPage() {
         </div>
         <div className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-text-faint">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-300/80" aria-hidden />
-          Keys are encrypted by Windows and only leave this PC to authenticate with the provider. Only the recent transcript and matching note snippets are sent. Without a key, prepared answers from your notes still work.
+          Keys are encrypted by {IS_MAC ? "your macOS Keychain" : "Windows"} and only leave this computer to authenticate with the provider. Only the recent transcript and matching note snippets are sent. Without a key, prepared answers from your notes still work.
         </div>
       </Card>
 

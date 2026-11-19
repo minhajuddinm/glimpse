@@ -1,5 +1,6 @@
 import { Briefcase, Code2, Handshake, Layers, ListChecks, MessagesSquare, MonitorSmartphone, type LucideIcon } from 'lucide-react'
 import type { Mode } from '../../../shared/settings'
+import { OS_NAME, TRAY_NAME } from '../platform'
 import { useSettingsStore } from '../store'
 import { Card, Loading, Row, Slider, Toggle } from '../ui'
 
@@ -48,7 +49,7 @@ export function GeneralPage() {
       </Card>
 
       <Card title="Overlay" icon={MonitorSmartphone} description="The answer panel on the right of your screen. It never appears in screen shares or recordings.">
-        <Row label="Show overlay when Glimpse starts" hint="Off: the overlay stays hidden until you turn it on (sidebar button, tray menu or hotkey)">
+        <Row label="Show overlay when Glimpse starts" hint={`Off: the overlay stays hidden until you turn it on (sidebar button, ${TRAY_NAME} menu or hotkey)`}>
           <Toggle checked={settings.overlayOnStart} onChange={(checked) => void update({ overlayOnStart: checked })} />
         </Row>
         <Row label="Click-through" hint="Clicks pass through the panel to the app behind it; the header stays clickable">
@@ -57,7 +58,7 @@ export function GeneralPage() {
         <Row label="Opacity" hint={`${String(Math.round(settings.overlayOpacity * 100))}% — lower it to see more of the app behind`}>
           <Slider min={0.15} max={1} step={0.05} value={settings.overlayOpacity} onChange={(value) => void update({ overlayOpacity: value })} />
         </Row>
-        <Row label="Launch at login" hint="Start Glimpse in the tray when you sign in to Windows (installed app only)">
+        <Row label="Launch at login" hint={`Start Glimpse in the ${TRAY_NAME} when you sign in to ${OS_NAME} (installed app only)`}>
           <Toggle checked={settings.launchAtLogin} onChange={(checked) => void update({ launchAtLogin: checked })} />
         </Row>
       </Card>

@@ -98,13 +98,34 @@ export function describeProtection(
       return visible
         ? `Protection was requested but Windows reports no display affinity (${hex}).`
         : `Pending: Windows applies the exclusion when the overlay is shown (${hex} while hidden).`
+    case 'sharing-none':
+      return MAC_DETAIL
     case 'unknown':
       return `Display affinity ${hex} on Windows ${build} could not be confirmed.`
   }
 }
 
+export const MAC_DETAIL =
+  'NSWindowSharingNone on macOS: hidden from screenshots, Chromium-based screen sharing (Meet in Chrome) and older recorders. ' +
+  'Apps that record through ScreenCaptureKit on macOS 15 or later may still see it: run the capture test with each app you use.'
+
+/** macOS has no affinity to read back; Electron reports whether the sharing type is set. */
+function inspectMacProtection(win: BrowserWindow, requested: boolean): ProtectionStatus {
+  const on = !win.isDestroyed() && win.isContentProtected()
+  return {
+    requested,
+    method: on ? 'sharing-none' : 'none',
+    affinity: null,
+    windowsBuild: null,
+    verified: on === requested,
+    captureSafeMode: false,
+    detail: on ? MAC_DETAIL : requested ? 'Protection was requested but macOS reports the window as shareable.' : 'Protection is off.'
+  }
+}
+
 /** Reads the affinity back from Windows and reports what is actually in effect. */
 export function inspectProtection(win: BrowserWindow, requested: boolean, windowsBuild: number | null): ProtectionStatus {
+  if (process.platform === 'darwin') return inspectMacProtection(win, requested)
   const affinity = readDisplayAffinity(win)
   const method = methodFromAffinity(affinity)
   const visible = win.isVisible()

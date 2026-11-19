@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
-/** How the OS was asked to exclude the overlay from capture, as read back from Windows. */
-export const ProtectionMethodSchema = z.enum(['exclude-from-capture', 'monitor-only', 'none', 'unknown'])
+/**
+ * How the OS was asked to exclude the overlay from capture. On Windows this is read back
+ * from the display affinity; on macOS it is the window's sharing type (NSWindowSharingNone).
+ */
+export const ProtectionMethodSchema = z.enum(['exclude-from-capture', 'monitor-only', 'sharing-none', 'none', 'unknown'])
 export type ProtectionMethod = z.infer<typeof ProtectionMethodSchema>
 
 export const ProtectionStatusSchema = z.object({

@@ -74,7 +74,7 @@ export async function runSelfTest(overlay: OverlayController): Promise<SelfTestR
   const { verdict, notes } = judge(protectedRun, controlRun)
 
   const protection = overlay.protectionStatus()
-  if (!protection.verified) notes.push(`Windows did not confirm the protection setting: ${protection.detail}`)
+  if (!protection.verified) notes.push(`The operating system did not confirm the protection setting: ${protection.detail}`)
   if (protection.method === 'monitor-only') {
     notes.push('Only WDA_MONITOR is available on this Windows version: recorders may show a black rectangle where the overlay is.')
   }

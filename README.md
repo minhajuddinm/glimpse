@@ -2,7 +2,7 @@
 
 # Glimpse
 
-A real-time conversation copilot for **Windows**. It listens to your call (your microphone plus the other side's audio), transcribes it locally, and shows short answers in a side panel. The panel is hidden from screen sharing and recording. Answers come from **your own notes folder first**, for example your interview notes and prepared answers.
+A real-time conversation copilot for **Windows** (macOS version in progress, see [macOS](#macos-in-progress)). It listens to your call (your microphone plus the other side's audio), transcribes it locally, and shows short answers in a side panel. The panel is hidden from screen sharing and recording. Answers come from **your own notes folder first**, for example your interview notes and prepared answers.
 
 > **Status: early development.** Pillar A (the capture-invisible overlay) is done. Audio capture, live answers and notes search are being built in that order. The progress table below tracks what works today.
 
@@ -21,6 +21,18 @@ Download `Glimpse Setup x.y.z.exe` (or build it with `npm run dist`) and run it.
 
 **Where your data lives.** Installed on a drive other than Windows (e.g. `D:\Projects\Glimpse`), Glimpse keeps everything on that drive, next to the install: `D:\Projects\Glimpse Data` (settings, encrypted keys, caches) and `D:\Projects\Glimpse Notes`. Installed on C:, it uses `%APPDATA%\Glimpse` and `Documents\Glimpse Notes`. Never inside the install folder itself, because uninstalling or updating deletes it. Run from source on a non-system drive, data goes to `.glimpse-data/` in the repo.
 
+## macOS (in progress)
+
+The Mac version shares all of Glimpse's code. It is built by GitHub Actions (**Actions → macOS build → Run workflow**), which produces `Glimpse-x.y.z-arm64.dmg` (Apple silicon) and `Glimpse-x.y.z-x64.dmg` (Intel). It has not yet been tested on a real Mac.
+
+- **Requires** macOS 13 or later. System audio capture needs macOS 14.2 or later.
+- **First launch:** the app is not notarized. Right-click Glimpse in Applications → **Open**, or run `xattr -cr /Applications/Glimpse.app`.
+- **Permissions macOS asks for:** Microphone (your side), System Audio Recording (the other side), and Screen Recording (system audio and the capture test). Allow them in System Settings → Privacy & Security.
+- **Invisible to screen sharing, with a caveat:** Glimpse uses Apple's "do not share this window" flag. Since macOS 15, apps that record through ScreenCaptureKit can ignore it, and Apple offers no way to prevent that. Run **Capture test** with each app you use, and check from a second device before relying on it.
+- **Shortcuts** are Control+Option (⌃⌥G etc.). Rebind them to ⌘ in Settings → Hotkeys if you prefer.
+- Data lives in `~/Library/Application Support/Glimpse`, and notes in `~/Documents/Glimpse Notes`.
+- To build on a Mac: `npm ci && npm run fetch-models -- --only kroko-en,silero-vad,bge-small-en && npm run dist`.
+
 ## Getting started (from source)
 
 ```powershell
@@ -37,7 +49,7 @@ npm run bench:answer # live answers with the keys saved in Settings: time to fir
 npm run dist       # build a Windows installer into release/ (download caches kept in .cache/)
 ```
 
-Glimpse runs in the system tray. Click the violet dot to open Settings.
+Glimpse runs in the system tray (the menu bar on macOS). Click its icon to open Settings.
 
 ## The overlay
 
