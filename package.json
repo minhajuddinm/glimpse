@@ -33,6 +33,7 @@
     "@anthropic-ai/sdk": "1.10.0",
     "@huggingface/transformers": "4.3.2",
     "koffi": "3.3.8",
+    "lucide-react": "1.76.0",
     "mammoth": "1.13.0",
     "qrcode": "1.5.4",
     "react": "18.3.1",

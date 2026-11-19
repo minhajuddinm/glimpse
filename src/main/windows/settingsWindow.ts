@@ -13,9 +13,9 @@ export function showSettingsWindow(): BrowserWindow {
   }
 
   const win = new BrowserWindow({
-    width: 920,
-    height: 640,
-    minWidth: 720,
+    width: 1080,
+    height: 740,
+    minWidth: 900,
     minHeight: 520,
     show: false,
     title: 'Glimpse',

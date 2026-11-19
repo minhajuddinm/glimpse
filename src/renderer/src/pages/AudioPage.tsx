@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Cpu, Eraser, Mic, MicOff, RotateCw, ScrollText, Speaker, VolumeX, type LucideIcon } from 'lucide-react'
 import type { AudioDevice, AudioLevels, AudioStatus, CaptureState, SourceStatus, TranscriptSnapshot } from '../../../shared/transcript'
 import { subscribe } from '../ipc'
 import { useSettingsStore } from '../store'
-import { Badge, Button, Card, Row } from '../ui'
+import { Badge, Button, Card, EmptyState, Loading, Row, Select } from '../ui'
 
 const STATE_TONE: Record<CaptureState, 'good' | 'bad' | 'warn' | 'neutral'> = {
   live: 'good',
@@ -20,40 +21,67 @@ function meterFraction(rms: number): number {
   return Math.max(0, Math.min(1, (20 * Math.log10(rms) + 60) / 60))
 }
 
-function Meter({ level }: { level: number }) {
-  const fraction = meterFraction(level)
+/** A segmented level meter: 20 bars that light up with the signal. */
+function Meter({ level, muted }: { level: number; muted: boolean }) {
+  const fraction = muted ? 0 : meterFraction(level)
+  const lit = Math.round(fraction * 20)
   return (
-    <div className="h-2 w-40 overflow-hidden rounded-full bg-white/10" role="meter" aria-valuemin={0} aria-valuemax={1} aria-valuenow={fraction}>
-      <div
-        className={`h-full rounded-full transition-[width] duration-100 ${fraction > 0.85 ? 'bg-amber-400' : 'bg-emerald-400'}`}
-        style={{ width: `${(fraction * 100).toFixed(0)}%` }}
-      />
+    <div className="flex h-7 items-end gap-[3px]" role="meter" aria-label="Input level" aria-valuemin={0} aria-valuemax={1} aria-valuenow={fraction}>
+      {Array.from({ length: 20 }, (_, index) => (
+        <span
+          key={index}
+          className={`w-[5px] rounded-sm transition-colors duration-100 ${
+            index < lit ? (index >= 17 ? 'bg-amber-400' : 'bg-gradient-to-t from-violet to-indigo') : 'bg-white/[0.07]'
+          }`}
+          style={{ height: `${String(30 + index * 3.5)}%` }}
+        />
+      ))}
     </div>
   )
 }
 
-function SourceRow({ title, status, level, muted, onMute }: { title: string; status: SourceStatus; level: number; muted: boolean; onMute: (muted: boolean) => void }) {
+function SourceCard({
+  title,
+  subtitle,
+  icon: Icon,
+  status,
+  level,
+  muted,
+  onMute
+}: {
+  title: string
+  subtitle: string
+  icon: LucideIcon
+  status: SourceStatus
+  level: number
+  muted: boolean
+  onMute: (muted: boolean) => void
+}) {
   return (
-    <div className="border-b border-hairline py-4 last:border-b-0">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-medium text-white">
-            {title}
-            <Badge tone={STATE_TONE[status.state]}>{status.state}</Badge>
+    <div className={`rounded-xl border p-4 transition ${status.state === 'live' ? 'border-violet/25 bg-violet/[0.04]' : 'border-hairline bg-white/[0.015]'}`}>
+      <div className="flex items-start gap-3">
+        <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${status.state === 'live' ? 'brand-gradient text-white' : 'bg-white/[0.05] text-text-faint'}`}>
+          <Icon className="h-4 w-4" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[13.5px] font-semibold text-white">{title}</span>
+            <Badge tone={STATE_TONE[status.state]} dot={status.state === 'live'}>
+              {status.state}
+            </Badge>
           </div>
-          <div className="truncate text-xs text-white/50" title={status.label}>
-            {status.label}
+          <div className="truncate text-xs text-text-faint" title={status.label}>
+            {status.label !== '' ? status.label : subtitle}
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <Meter level={level} />
-          <label className="flex items-center gap-1.5 text-xs text-white/70">
-            <input type="checkbox" className="accent-violet" checked={muted} onChange={(event) => { onMute(event.target.checked) }} />
-            Mute
-          </label>
-        </div>
+        <Button size="sm" tone={muted ? 'danger' : 'ghost'} icon={muted ? (Icon === Mic ? MicOff : VolumeX) : Icon} onClick={() => { onMute(!muted) }}>
+          {muted ? 'Muted' : 'Mute'}
+        </Button>
       </div>
-      {status.message !== '' && <p className="mt-1.5 text-xs text-white/55">{status.message}</p>}
+      <div className="mt-3">
+        <Meter level={level} muted={muted} />
+      </div>
+      {status.message !== '' && <p className="mt-2 text-xs leading-relaxed text-text-faint">{status.message}</p>}
     </div>
   )
 }
@@ -82,85 +110,101 @@ export function AudioPage() {
     }
   }, [])
 
-  if (settings === null || status === null) return <div className="text-sm text-white/50">Loading audio…</div>
+  if (settings === null || status === null) return <Loading label="Loading audio" />
 
   const asrTone = status.asr.state === 'ready' ? 'good' : status.asr.state === 'loading' || status.asr.state === 'restarting' ? 'warn' : 'bad'
   const recent = transcript.segments.slice(-12)
 
   return (
-    <div className="space-y-5">
-      <Card title="Sources">
-        <SourceRow title="Them (system audio)" status={status.them} level={levels.them} muted={settings.loopbackMuted} onMute={(muted) => void update({ loopbackMuted: muted })} />
-        <SourceRow title="You (microphone)" status={status.you} level={levels.you} muted={settings.micMuted} onMute={(muted) => void update({ micMuted: muted })} />
-        <Row label="Microphone" hint="Glimpse falls back to the Windows default if this one is unplugged">
-          <select
-            className="max-w-64 rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white"
+    <>
+      <div className="grid animate-fade-up grid-cols-2 gap-3">
+        <SourceCard title="Them" subtitle="System audio" icon={Speaker} status={status.them} level={levels.them} muted={settings.loopbackMuted} onMute={(muted) => void update({ loopbackMuted: muted })} />
+        <SourceCard title="You" subtitle="Microphone" icon={Mic} status={status.you} level={levels.you} muted={settings.micMuted} onMute={(muted) => void update({ micMuted: muted })} />
+      </div>
+
+      <Card title="Devices" icon={Mic}>
+        <Row label="Microphone" hint="If it is unplugged, Glimpse falls back to the Windows default and switches back when it returns">
+          <Select
             value={settings.micDeviceId ?? ''}
-            onChange={(event) => void update({ micDeviceId: event.target.value === '' ? null : event.target.value })}
-          >
-            <option value="">Windows default</option>
-            {devices.map((device) => (
-              <option key={device.deviceId} value={device.deviceId}>
-                {device.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: '', label: 'Windows default' }, ...devices.map((device) => ({ value: device.deviceId, label: device.label }))]}
+            onChange={(value) => void update({ micDeviceId: value === '' ? null : value })}
+          />
         </Row>
-        <p className="pt-3 text-xs text-white/45">
-          System audio is whatever plays through your default speakers or headset. To capture another output, make it the Windows default.
+        <p className="mt-3 text-xs leading-relaxed text-text-faint">
+          “Them” is whatever plays through your default speakers or headset. To capture another output, make it the Windows default.
         </p>
       </Card>
 
-      <Card title="Speech recognition (on this PC)">
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge tone={asrTone}>{status.asr.state}</Badge>
-          <select
-            className="rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white"
+      <Card
+        title="Speech recognition"
+        icon={Cpu}
+        description="Runs entirely on this PC. Audio is never uploaded."
+        actions={
+          <Badge tone={asrTone} dot={asrTone === 'good'}>
+            {status.asr.state}
+          </Badge>
+        }
+      >
+        <Row label="Model" hint="Kroko is fast and accurate for English; Nemotron is larger and slower">
+          <Select
             value={settings.asrModel}
-            onChange={(event) => {
-              const value = event.target.value
-              if (value === 'kroko-en' || value === 'nemotron-0.6b') void update({ asrModel: value })
-            }}
-          >
-            <option value="kroko-en">Kroko (fast, 55 MB)</option>
-            <option value="nemotron-0.6b">Nemotron 0.6B (larger, slower)</option>
-          </select>
-          <span className="text-xs text-white/55">
-            Speech end → text: {status.latency.p50 === null ? 'no data yet' : `p50 ${status.latency.p50} ms · p95 ${status.latency.p95 ?? '?'} ms (${status.latency.samples} lines)`}
-          </span>
-          <span className="ml-auto">
-            <Button tone="ghost" onClick={() => void window.glimpse.invoke('audio:retry', null)}>
-              Retry
-            </Button>
-          </span>
-        </div>
-        {status.asr.message !== '' && <p className="mt-2 text-xs text-white/55">{status.asr.message}</p>}
+            options={[
+              { value: 'kroko-en', label: 'Kroko · fast (55 MB)' },
+              { value: 'nemotron-0.6b', label: 'Nemotron 0.6B · larger' }
+            ]}
+            onChange={(value) => void update({ asrModel: value })}
+          />
+        </Row>
+        <Row
+          label="Speed"
+          hint={
+            status.latency.p50 === null
+              ? 'Time from the end of speech to text appears here once someone talks'
+              : `End of speech → text: typically ${String(status.latency.p50)} ms, slowest ${String(status.latency.p95 ?? '?')} ms (${String(status.latency.samples)} lines)`
+          }
+        >
+          <Button tone="ghost" size="sm" icon={RotateCw} onClick={() => void window.glimpse.invoke('audio:retry', null)}>
+            Restart
+          </Button>
+        </Row>
+        {status.asr.message !== '' && <p className="mt-3 text-xs text-text-faint">{status.asr.message}</p>}
       </Card>
 
-      <Card title="Live transcript">
-        <div className="mb-3 flex justify-end">
-          <Button tone="ghost" onClick={() => void window.glimpse.invoke('transcript:clear', null)}>
+      <Card
+        title="Live transcript"
+        icon={ScrollText}
+        actions={
+          <Button tone="subtle" size="sm" icon={Eraser} onClick={() => void window.glimpse.invoke('transcript:clear', null)}>
             Clear
           </Button>
-        </div>
+        }
+      >
         {recent.length === 0 && transcript.partials.them === '' && transcript.partials.you === '' ? (
-          <p className="text-sm text-white/45">Nothing yet. Speak, or play something with voices in it.</p>
+          <EmptyState icon={ScrollText} title="Listening…">
+            Speak, or play something with voices in it. Lines from the other side appear on the left, yours on the right.
+          </EmptyState>
         ) : (
-          <ol className="space-y-1.5 text-sm">
+          <ol className="space-y-2">
             {recent.map((segment) => (
-              <li key={segment.id} className={segment.source === 'you' ? 'text-right' : ''}>
-                <span className={`mr-2 text-xs font-semibold ${segment.source === 'you' ? 'text-emerald-300' : 'text-violet-300'}`}>
-                  {segment.source === 'you' ? 'You' : 'Them'}
-                </span>
-                <span className="text-white/85">{segment.text}</span>
-                {segment.latencyMs !== null && <span className="ml-2 text-[10px] text-white/30">{Math.round(segment.latencyMs)} ms</span>}
+              <li key={segment.id} className={`flex ${segment.source === 'you' ? 'justify-end' : ''}`}>
+                <div
+                  className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed ${
+                    segment.source === 'you' ? 'rounded-br-md bg-emerald-400/[0.08] text-emerald-50' : 'rounded-bl-md bg-white/[0.05] text-text'
+                  }`}
+                >
+                  <div className={`mb-0.5 text-[10px] font-semibold uppercase tracking-wider ${segment.source === 'you' ? 'text-emerald-300/80' : 'text-violet-soft'}`}>
+                    {segment.source === 'you' ? 'You' : 'Them'}
+                    {segment.latencyMs !== null && <span className="ml-2 font-normal normal-case tracking-normal text-text-faint">{Math.round(segment.latencyMs)} ms</span>}
+                  </div>
+                  {segment.text}
+                </div>
               </li>
             ))}
-            {transcript.partials.them !== '' && <li className="italic text-white/45">Them: {transcript.partials.them}…</li>}
-            {transcript.partials.you !== '' && <li className="text-right italic text-white/45">You: {transcript.partials.you}…</li>}
+            {transcript.partials.them !== '' && <li className="text-[13px] italic text-text-faint">Them: {transcript.partials.them}…</li>}
+            {transcript.partials.you !== '' && <li className="text-right text-[13px] italic text-text-faint">You: {transcript.partials.you}…</li>}
           </ol>
         )}
       </Card>
-    </div>
+    </>
   )
 }

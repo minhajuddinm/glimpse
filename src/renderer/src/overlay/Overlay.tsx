@@ -97,11 +97,12 @@ export function Overlay() {
           style={{ background: 'repeating-linear-gradient(90deg, #ff00ff 0 8px, #00ff00 8px 16px)' }}
         />
       )}
-      <div className="flex h-full flex-col p-2.5">
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[rgb(14_14_26/0.88)] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.04)]">
-          <div ref={headerRef} className="flex h-[56px] shrink-0 items-center gap-2.5 border-b border-white/10 px-4">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-violet shadow-[0_0_10px_var(--color-violet)]" />
-            <span className="text-[11px] font-semibold tracking-[0.18em] text-white/90">GLIMPSE</span>
+      <div className="relative flex h-full flex-col p-2.5">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgb(20_18_36/0.92),rgb(10_10_20/0.9))] shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_20px_60px_-20px_rgb(0_0_0/0.8)] backdrop-blur-xl">
+          <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-48 w-72 -translate-x-1/2 rounded-full bg-violet/20 blur-3xl" />
+          <div ref={headerRef} className="relative flex h-[56px] shrink-0 items-center gap-2.5 border-b border-white/[0.07] px-4">
+            <img src="./logo.png" alt="" className="h-6 w-6 rounded-md shadow-[0_0_14px_-2px_rgb(139_92_246/0.9)]" />
+            <span className="bg-gradient-to-r from-violet-200 to-indigo-200 bg-clip-text text-[12px] font-semibold tracking-[0.16em] text-transparent">GLIMPSE</span>
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                 clickThrough ? 'bg-violet/20 text-violet' : 'bg-emerald-400/15 text-emerald-300'
@@ -112,7 +113,7 @@ export function Overlay() {
             <button
               type="button"
               title="Toggle click-through"
-              className="ml-auto rounded-md border border-white/10 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+              className="ml-auto cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/80 transition hover:bg-white/10 active:scale-95"
               onClick={() => void window.glimpse.invoke('settings:update', { clickThrough: !clickThrough })}
             >
               {clickThrough ? 'Unlock' : 'Lock'}

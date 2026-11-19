@@ -1,3 +1,4 @@
+import { FlaskConical, ShieldCheck, Table2, Video } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   CAPTURE_APPS,
@@ -46,7 +47,7 @@ function ProtectionCard({ state }: { state: OverlayState | null }) {
   const protection = state?.protection
   const tone = protection === undefined ? 'neutral' : protection.verified && protection.method === 'exclude-from-capture' ? 'good' : 'warn'
   return (
-    <Card title="Capture protection">
+    <Card title="Capture protection" icon={ShieldCheck} description="What Windows reports for the overlay window right now.">
       {protection === undefined ? (
         <div className="text-sm text-white/50">Waiting for the overlay…</div>
       ) : (
@@ -88,13 +89,13 @@ function ResultView({ result }: { result: SelfTestResult }) {
         <figure>
           <figcaption className="mb-1.5 text-xs font-medium text-white/70">Protection ON, what a recorder sees</figcaption>
           {result.protectedImage !== null && (
-            <img src={result.protectedImage} alt="Capture with protection on" className="max-h-80 rounded-md border border-hairline" />
+            <img src={result.protectedImage} alt="Capture with protection on" className="max-h-80 rounded-xl border border-hairline-strong" />
           )}
         </figure>
         <figure>
           <figcaption className="mb-1.5 text-xs font-medium text-white/70">Control, protection OFF (red = overlay pixels)</figcaption>
           {result.controlImage !== null && (
-            <img src={result.controlImage} alt="Capture with protection off" className="max-h-80 rounded-md border border-hairline" />
+            <img src={result.controlImage} alt="Capture with protection off" className="max-h-80 rounded-xl border border-hairline-strong" />
           )}
         </figure>
       </div>
@@ -142,7 +143,7 @@ function SelfTestCard() {
   }
 
   return (
-    <Card title="Capture self-test">
+    <Card title="Capture self-test" icon={FlaskConical}>
       <p className="mb-3 text-xs leading-relaxed text-white/55">
         Paints the overlay with a magenta/green pattern, captures this display the way a screen recorder does, and checks
         the overlay is absent. A control capture with protection switched off for a moment proves the test can see it.
@@ -249,7 +250,7 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
   }
 
   return (
-    <Card title="Live test with a real recorder">
+    <Card title="Live test with a real recorder" icon={Video}>
       <ol className="mb-4 list-decimal space-y-1.5 pl-5 text-xs leading-relaxed text-white/55">
         <li>Start your recording or screen share (Zoom, Meet, Teams, OBS, Loom, Discord, Game Bar…).</li>
         <li>
@@ -271,7 +272,7 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
           Step 1: Control (5 s)
         </Button>
         <select
-          className="rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white"
+          className="h-9 cursor-pointer rounded-lg border border-hairline-strong bg-ink/70 px-3 text-[13px] text-white transition focus:border-violet/60 focus:outline-none focus:ring-2 focus:ring-violet/25"
           value={duration}
           disabled={running}
           onChange={(event) => {
@@ -302,7 +303,7 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
       <div className="mt-4 space-y-3 border-t border-hairline pt-4">
         <div className="flex flex-wrap items-center gap-3">
           <select
-            className="rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white"
+            className="h-9 cursor-pointer rounded-lg border border-hairline-strong bg-ink/70 px-3 text-[13px] text-white transition focus:border-violet/60 focus:outline-none focus:ring-2 focus:ring-violet/25"
             value={app}
             onChange={(event) => {
               const parsed = CaptureAppSchema.safeParse(event.target.value)
@@ -348,7 +349,7 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
           onChange={(event) => {
             setNotes(event.target.value)
           }}
-          className="w-full rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white placeholder:text-white/30"
+          className="w-full h-9 cursor-pointer rounded-lg border border-hairline-strong bg-ink/70 px-3 text-[13px] text-white transition focus:border-violet/60 focus:outline-none focus:ring-2 focus:ring-violet/25 placeholder:text-white/30"
         />
         <Button onClick={() => void report()} disabled={visible === null}>
           Save result
@@ -360,7 +361,7 @@ function LiveCard({ onReported }: { onReported: (rows: MatrixRow[]) => void }) {
 
 function MatrixCard({ rows }: { rows: MatrixRow[] }) {
   return (
-    <Card title="Capture matrix">
+    <Card title="Capture matrix" icon={Table2} description="Your results per app, kept on this PC.">
       {rows.length === 0 ? (
         <div className="text-sm text-white/45">No live results yet.</div>
       ) : (

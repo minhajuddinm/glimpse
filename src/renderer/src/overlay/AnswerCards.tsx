@@ -1,4 +1,13 @@
+import { BadgeCheck, Lightbulb, MessageSquareQuote, MonitorUp, NotebookPen, Sparkles, type LucideIcon } from 'lucide-react'
 import type { Answer } from '../../../shared/answers'
+
+const ICON: Record<Answer['kind'], LucideIcon> = {
+  answer: MessageSquareQuote,
+  'talking-points': Lightbulb,
+  'fact-check': BadgeCheck,
+  screen: MonitorUp,
+  elaborate: Sparkles
+}
 
 const LABEL: Record<Answer['kind'], string> = {
   answer: 'ANSWER',
@@ -45,17 +54,26 @@ export function AnswerCards({ answers, regenerateKey }: { answers: readonly Answ
     <div className="flex flex-col gap-2.5">
       {visible.map((answer, index) => {
         const primary = index === 0
+        const Icon = ICON[answer.kind]
         return (
           <article
             key={answer.id}
-            className={`rounded-xl border px-3.5 py-3 transition-opacity ${
-              primary ? 'border-violet/40 bg-violet/[0.08]' : 'border-white/5 bg-white/[0.02]'
+            className={`rounded-2xl border px-3.5 py-3 transition-opacity duration-300 ${
+              primary
+                ? 'animate-fade-up border-violet/35 bg-[linear-gradient(160deg,rgb(139_92_246/0.16),rgb(99_102_241/0.05))] shadow-[0_12px_32px_-16px_rgb(139_92_246/0.8)]'
+                : 'border-white/[0.06] bg-white/[0.025]'
             }`}
             style={{ opacity: primary ? 1 : Math.max(0.35, 0.8 - index * 0.2) }}
           >
-            <div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-violet/90">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.14em] text-violet-300">
+              <Icon className="h-3.5 w-3.5" aria-hidden />
               {LABEL[answer.kind]}
-              {answer.origin === 'notes' && <span className="rounded bg-emerald-400/15 px-1.5 py-px text-emerald-300">FROM YOUR NOTES</span>}
+              {(answer.origin === 'notes' || answer.origin === 'notes+model') && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-1.5 py-px tracking-normal text-emerald-300">
+                  <NotebookPen className="h-2.5 w-2.5" aria-hidden />
+                  {answer.origin === 'notes' ? 'YOUR NOTES' : 'NOTES + AI'}
+                </span>
+              )}
               {answer.status === 'streaming' && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet" />}
             </div>
             {primary && answer.question !== '' && <div className="mb-1.5 truncate text-[11px] text-white/40">{answer.question}</div>}

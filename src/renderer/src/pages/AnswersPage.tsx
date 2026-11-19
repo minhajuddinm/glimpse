@@ -1,10 +1,25 @@
 import { useEffect, useState } from 'react'
+import { Bot, CheckCircle2, KeyRound, Send, ShieldCheck, Sparkles, UserRound, Zap } from 'lucide-react'
 import type { AnswersSnapshot, KeyStatus } from '../../../shared/answers'
 import { errorMessage, subscribe } from '../ipc'
 import { useSettingsStore } from '../store'
-import { Badge, Button, Card, ErrorBanner, Row } from '../ui'
+import { Badge, Button, Card, ErrorBanner, Loading, Notice, Row, Select, TextArea, TextInput, Toggle } from '../ui'
 
-function KeyRow({ label, hint, provider, saved, onSaved }: { label: string; hint: string; provider: 'anthropic' | 'groq'; saved: boolean; onSaved: (status: KeyStatus) => void }) {
+function KeyRow({
+  label,
+  hint,
+  provider,
+  saved,
+  onSaved,
+  recommended = false
+}: {
+  label: string
+  hint: string
+  provider: 'anthropic' | 'groq'
+  saved: boolean
+  onSaved: (status: KeyStatus) => void
+  recommended?: boolean
+}) {
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
   const save = async (key: string): Promise<void> => {
@@ -17,29 +32,38 @@ function KeyRow({ label, hint, provider, saved, onSaved }: { label: string; hint
     }
   }
   return (
-    <div className="border-b border-hairline py-4 last:border-b-0">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-sm font-medium text-white">{label}</span>
-        <Badge tone={saved ? 'good' : 'neutral'}>{saved ? 'saved' : 'not set'}</Badge>
+    <div className={`rounded-xl border p-4 transition ${saved ? 'border-emerald-400/20 bg-emerald-400/[0.03]' : 'border-hairline bg-white/[0.015]'}`}>
+      <div className="mb-1 flex items-center gap-2">
+        <span className="text-[13.5px] font-semibold text-white">{label}</span>
+        {recommended && <Badge tone="accent">Recommended</Badge>}
+        <span className="ml-auto">
+          {saved ? (
+            <Badge tone="good" dot>
+              Key saved
+            </Badge>
+          ) : (
+            <Badge tone="neutral">Not set</Badge>
+          )}
+        </span>
       </div>
-      <p className="mb-2 text-xs text-white/50">{hint}</p>
+      <p className="mb-3 text-xs leading-relaxed text-text-faint">{hint}</p>
       <div className="flex gap-2">
-        <input
+        <TextInput
           type="password"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder={saved ? 'Paste a new key to replace it' : 'Paste your API key'}
+          mono
           value={value}
-          onChange={(event) => {
-            setValue(event.target.value)
+          onChange={setValue}
+          onEnter={() => {
+            if (value.trim() !== '') void save(value)
           }}
-          className="min-w-0 flex-1 rounded-md border border-hairline bg-ink px-3 py-1.5 font-mono text-xs text-white placeholder:text-white/30"
+          placeholder={saved ? 'Paste a new key to replace it' : 'Paste your API key'}
+          aria-label={`${label} API key`}
         />
-        <Button onClick={() => void save(value)} disabled={value.trim() === ''}>
+        <Button icon={KeyRound} onClick={() => void save(value)} disabled={value.trim() === ''}>
           Save
         </Button>
         {saved && (
-          <Button tone="ghost" onClick={() => void save('')}>
+          <Button tone="subtle" onClick={() => void save('')}>
             Remove
           </Button>
         )}
@@ -71,110 +95,132 @@ export function AnswersPage() {
     return subscribe('answers:update', setAnswers)
   }, [])
 
-  if (settings === null || keys === null) return <div className="text-sm text-white/50">Loading…</div>
+  if (settings === null || keys === null) return <Loading label="Loading answer settings" />
   // Show the answer to what was typed here, not a newer auto-answer from the live call.
   const latest = asked === null ? undefined : answers.answers.find((answer) => answer.status !== 'cancelled' && answer.question === asked)
+  const words = latest === undefined ? 0 : latest.text.split(/\s+/).filter((word) => word.length > 0).length
 
   return (
-    <div className="space-y-5">
-      <Card title="Answer provider">
+    <>
+      <Card title="AI provider" icon={Bot} description="Bring your own key. Glimpse has no server: questions go straight from this PC to the provider you choose.">
         {!keys.encryptionAvailable && <ErrorBanner message="Windows cannot encrypt secrets on this account, so API keys cannot be saved." />}
-        <KeyRow
-          label="Anthropic (Claude)"
-          hint="Best answers. Claude Haiku 5.5 for live answers, Sonnet 5.5 for “elaborate”. Roughly $0.04 per hour of calls. Create a key at console.anthropic.com."
-          provider="anthropic"
-          saved={keys.anthropic}
-          onSaved={setKeys}
-        />
-        <KeyRow
-          label="Groq (free tier)"
-          hint="Free fallback (gpt-oss-120b), about 2–4 answers a minute. Less careful than Claude: it may invent personal details, so add your notes and background. Create a key at console.groq.com."
-          provider="groq"
-          saved={keys.groq}
-          onSaved={setKeys}
-        />
-        <Row label="Use" hint="Auto uses Claude when its key is saved, otherwise Groq">
-          <select
-            className="rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white"
-            value={settings.llmProvider}
-            onChange={(event) => {
-              const value = event.target.value
-              if (value === 'auto' || value === 'anthropic' || value === 'groq') void update({ llmProvider: value })
-            }}
-          >
-            <option value="auto">Auto</option>
-            <option value="anthropic">Anthropic only</option>
-            <option value="groq">Groq only</option>
-          </select>
-        </Row>
-        <p className="pt-3 text-xs text-white/45">
-          Keys are encrypted with Windows (DPAPI) and stay on this PC. Only the recent transcript and matching note snippets are sent, to the provider you choose. Without a key, Glimpse still shows prepared answers from your notes.
-        </p>
-      </Card>
-
-      <Card title="When to answer">
-        <Row label="Answer automatically" hint="When the other side asks a question, answer without a key press">
-          <input type="checkbox" className="h-4 w-4 accent-violet" checked={settings.autoAnswer} onChange={(event) => void update({ autoAnswer: event.target.checked })} />
-        </Row>
-        <Row label="Fact-check claims" hint="Flag numbers, dates and names the other side states (✓ ✗ ⚠)">
-          <input type="checkbox" className="h-4 w-4 accent-violet" checked={settings.factCheck} onChange={(event) => void update({ factCheck: event.target.checked })} />
-        </Row>
-      </Card>
-
-      <Card title="About you (resume, job description, goals)">
-        <p className="mb-2 text-xs text-white/50">Glimpse uses this in every answer. Your notes folder is searched separately for each question.</p>
-        <textarea
-          rows={7}
-          maxLength={20000}
-          value={context}
-          onChange={(event) => {
-            setContext(event.target.value)
-            setContextSaved(false)
-          }}
-          placeholder="e.g. Final-year software engineering student. Interning at … Interviewing for a backend role at …"
-          className="w-full resize-y rounded-md border border-hairline bg-ink px-3 py-2 text-sm text-white placeholder:text-white/30"
-        />
-        <div className="mt-2 flex items-center gap-3">
-          <Button onClick={() => void window.glimpse.invoke('context:set', context).then(() => { setContextSaved(true) })} disabled={contextSaved}>
-            {contextSaved ? 'Saved' : 'Save'}
-          </Button>
-          <span className="text-xs text-white/40">{context.length.toLocaleString()} / 20,000 characters</span>
+        <div className="space-y-3">
+          <KeyRow
+            label="Anthropic · Claude"
+            recommended
+            hint="Most accurate, follows your notes closely. Haiku 5.5 for live answers, Sonnet 5.5 for “elaborate”. About $0.04 per hour of calls — key from console.anthropic.com → API Keys."
+            provider="anthropic"
+            saved={keys.anthropic}
+            onSaved={setKeys}
+          />
+          <KeyRow
+            label="Groq · free tier"
+            hint="Free and very fast (gpt-oss-120b), about 2–4 answers a minute. Less careful: it may invent personal details, so add your notes and background. Key from console.groq.com."
+            provider="groq"
+            saved={keys.groq}
+            onSaved={setKeys}
+          />
+        </div>
+        <div className="mt-4 border-t border-hairline pt-4">
+          <Row label="Use" hint="Auto prefers Claude when its key is saved, otherwise Groq">
+            <Select
+              value={settings.llmProvider}
+              options={[
+                { value: 'auto', label: 'Auto' },
+                { value: 'anthropic', label: 'Anthropic only' },
+                { value: 'groq', label: 'Groq only' }
+              ]}
+              onChange={(value) => void update({ llmProvider: value })}
+            />
+          </Row>
+        </div>
+        <div className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-text-faint">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-300/80" aria-hidden />
+          Keys are encrypted by Windows and only leave this PC to authenticate with the provider. Only the recent transcript and matching note snippets are sent. Without a key, prepared answers from your notes still work.
         </div>
       </Card>
 
-      <Card title="Try it">
+      <Card title="When to answer" icon={Zap}>
+        <Row label="Answer automatically" hint="When the other side asks a question, answer without pressing anything">
+          <Toggle checked={settings.autoAnswer} onChange={(checked) => void update({ autoAnswer: checked })} />
+        </Row>
+        <Row label="Fact-check claims" hint="Flag numbers, dates and names the other side states (✓ ✗ ⚠)">
+          <Toggle checked={settings.factCheck} onChange={(checked) => void update({ factCheck: checked })} />
+        </Row>
+      </Card>
+
+      <Card
+        title="About you"
+        icon={UserRound}
+        description="Resume, the job description, your goals. Used in every answer; your notes folder is searched separately for each question."
+        actions={
+          <Button
+            size="sm"
+            tone={contextSaved ? 'ghost' : 'primary'}
+            icon={contextSaved ? CheckCircle2 : undefined}
+            disabled={contextSaved}
+            onClick={() =>
+              void window.glimpse.invoke('context:set', context).then(() => {
+                setContextSaved(true)
+              })
+            }
+          >
+            {contextSaved ? 'Saved' : 'Save'}
+          </Button>
+        }
+      >
+        <TextArea
+          rows={7}
+          maxLength={20000}
+          value={context}
+          onChange={(value) => {
+            setContext(value)
+            setContextSaved(false)
+          }}
+          placeholder="e.g. Final-year software engineering student. Interned at … on payments. Interviewing for a backend role at …"
+          aria-label="About you"
+        />
+        <div className="mt-1.5 text-right text-[11px] text-text-faint">{context.length.toLocaleString()} / 20,000</div>
+      </Card>
+
+      <Card title="Try it" icon={Sparkles} description="Ask the kind of question the other side might ask and see what Glimpse would show.">
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={question}
-            maxLength={500}
-            onChange={(event) => {
-              setQuestion(event.target.value)
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') ask()
-            }}
-            placeholder="Type a question the other side might ask"
-            className="min-w-0 flex-1 rounded-md border border-hairline bg-ink px-3 py-1.5 text-sm text-white placeholder:text-white/30"
-          />
-          <Button onClick={ask} disabled={question.trim() === ''}>
+          <TextInput value={question} maxLength={500} onChange={setQuestion} onEnter={ask} placeholder="e.g. Walk me through a project you're proud of" />
+          <Button icon={Send} onClick={ask} disabled={question.trim() === ''}>
             Ask
           </Button>
         </div>
         {latest !== undefined && (
-          <div className="mt-4 rounded-lg border border-hairline bg-ink p-3">
-            <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-white/50">
-              <Badge tone={latest.status === 'error' ? 'bad' : latest.status === 'done' ? 'good' : 'warn'}>{latest.status}</Badge>
+          <div className="mt-4 animate-fade-up rounded-xl border border-violet/25 bg-violet/[0.05] p-4">
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-text-faint">
+              <Badge tone={latest.status === 'error' ? 'bad' : latest.status === 'done' ? 'good' : 'accent'} dot={latest.status === 'streaming'}>
+                {latest.status}
+              </Badge>
               <span>
-                {latest.origin === 'notes' ? 'from your notes' : latest.origin === 'notes+model' ? `${latest.model ?? 'model'} + your notes` : latest.model ?? ''}
+                {latest.origin === 'notes' ? 'from your notes' : latest.origin === 'notes+model' ? `${latest.model ?? 'model'} + your notes` : (latest.model ?? '')}
               </span>
-              {latest.firstTextAt !== null && <span>first words after {Math.max(0, latest.firstTextAt - latest.askedAt)} ms</span>}
+              {latest.firstTextAt !== null && <span>· first words in {Math.max(0, latest.firstTextAt - latest.askedAt)} ms</span>}
+              {words > 0 && <span>· {words} words</span>}
             </div>
-            <p className="whitespace-pre-wrap text-sm text-white">{latest.status === 'error' ? latest.error : latest.text || '…'}</p>
-            {latest.sources.length > 0 && <p className="mt-1 text-xs text-white/40">Notes: {latest.sources.join(', ')}</p>}
+            {latest.status === 'thinking' && latest.text === '' ? (
+              <div className="space-y-2" aria-label="Thinking">
+                <div className="skeleton h-3.5 w-11/12 rounded" />
+                <div className="skeleton h-3.5 w-3/4 rounded" />
+              </div>
+            ) : (
+              <p className={`whitespace-pre-wrap text-[15px] leading-relaxed ${latest.status === 'error' ? 'text-red-300' : 'text-white'}`}>
+                {latest.status === 'error' ? latest.error : latest.text}
+              </p>
+            )}
+            {latest.sources.length > 0 && <p className="mt-2 text-[11px] text-text-faint">Notes: {latest.sources.join(', ')}</p>}
+          </div>
+        )}
+        {latest === undefined && !keys.anthropic && !keys.groq && (
+          <div className="mt-4">
+            <Notice>Add a key above to get model answers. Questions that match your prepared notes are answered even without one.</Notice>
           </div>
         )}
       </Card>
-    </div>
+    </>
   )
 }

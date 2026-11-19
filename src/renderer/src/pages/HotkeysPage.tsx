@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, type KeyboardEvent } from 'react'
 import { HOTKEY_ACTIONS, HOTKEY_LABELS, acceleratorFromKeyEvent, type HotkeyAction } from '../../../shared/accelerator'
 import { errorMessage } from '../ipc'
 import { useSettingsStore } from '../store'
-import { Button, Card, Row } from '../ui'
+import { Keyboard, RefreshCw } from 'lucide-react'
+import { Button, Card, Loading, Row } from '../ui'
 
 export function HotkeysPage() {
   const settings = useSettingsStore((state) => state.settings)
@@ -19,7 +20,7 @@ export function HotkeysPage() {
     void refreshFailures()
   }, [refreshFailures])
 
-  if (settings === null) return <div className="text-sm text-white/50">Loading settings…</div>
+  if (settings === null) return <Loading label="Loading hotkeys" />
 
   const submit = async (action: HotkeyAction, accelerator: string): Promise<void> => {
     try {
@@ -50,7 +51,7 @@ export function HotkeysPage() {
   }
 
   return (
-    <Card>
+    <Card title="Shortcuts" icon={Keyboard} description="Click a shortcut, then press the new keys (with Ctrl, Alt, Shift or Win). Esc cancels.">
       {HOTKEY_ACTIONS.map((action) => {
         const failure = failures[action]
         const message = messages[action] ?? failure
@@ -73,20 +74,25 @@ export function HotkeysPage() {
                 onClick={() => {
                   setRecording(action)
                 }}
-                className={`min-w-44 rounded-md border px-3 py-1.5 text-left font-mono text-xs ${
-                  recording === action ? 'border-violet bg-violet/15 text-violet' : 'border-hairline bg-ink text-white'
+                className={`h-9 min-w-44 cursor-pointer rounded-lg border px-3 text-left font-mono text-xs transition duration-200 ${
+                  recording === action
+                    ? 'animate-pulse border-violet/70 bg-violet/15 text-violet-soft ring-2 ring-violet/25'
+                    : failure !== undefined
+                      ? 'border-amber-400/40 bg-amber-400/[0.06] text-amber-100 hover:border-amber-400/60'
+                      : 'border-hairline-strong bg-ink/70 text-white hover:border-white/20'
                 }`}
               >
                 {recording === action ? 'Press the new shortcut…' : settings.hotkeys[action]}
               </button>
               <Button
-                tone="ghost"
+                tone="subtle"
+                size="sm"
+                icon={RefreshCw}
+                title="Register this shortcut again"
                 onClick={() => {
                   void submit(action, settings.hotkeys[action])
                 }}
-              >
-                Re-register
-              </Button>
+              />
             </div>
           </Row>
         )

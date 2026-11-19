@@ -1,11 +1,48 @@
 @import 'tailwindcss';
 
+/*
+ * Glimpse design tokens ("Modern Dark", from the UI/UX Pro Max design system):
+ * layered dark surfaces, a violet→indigo brand accent matching the logo, soft glow,
+ * Segoe UI Variable (native on Windows 11, no network font needed).
+ */
 @theme {
-  --color-ink: #0b0b12;
-  --color-panel: #14141f;
-  --color-hairline: rgb(255 255 255 / 0.08);
+  --color-ink: #0a0a12;
+  --color-panel: #12121c;
+  --color-panel-2: #181826;
+  --color-elevated: #1e1e2e;
+  --color-hairline: rgb(255 255 255 / 0.07);
+  --color-hairline-strong: rgb(255 255 255 / 0.12);
   --color-violet: #8b5cf6;
-  --font-sans: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --color-violet-soft: #a78bfa;
+  --color-indigo: #6366f1;
+  --color-text: #ececf4;
+  --color-text-muted: rgb(236 236 244 / 0.62);
+  --color-text-faint: rgb(236 236 244 / 0.42);
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-up: fade-up 320ms var(--ease-out-expo) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
 }
 
 html,
@@ -17,9 +54,98 @@ body,
 body {
   margin: 0;
   background: var(--color-ink);
-  color: #e7e7f0;
+  color: var(--color-text);
   font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* The settings window: two soft brand glows behind everything. */
+.app-backdrop {
+  background:
+    radial-gradient(900px 520px at 12% -10%, rgb(139 92 246 / 0.16), transparent 60%),
+    radial-gradient(700px 480px at 110% 110%, rgb(99 102 241 / 0.12), transparent 60%),
+    var(--color-ink);
+}
+
+/* Glass surface used by cards. */
+.surface {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.035), rgb(255 255 255 / 0.015));
+  border: 1px solid var(--color-hairline);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 10px 30px -18px rgb(0 0 0 / 0.7);
+}
+
+.brand-gradient {
+  background-image: linear-gradient(135deg, var(--color-violet), var(--color-indigo));
+}
+
+.text-gradient {
+  background-image: linear-gradient(135deg, #ddd6fe, #a5b4fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Visible keyboard focus everywhere (never removed). */
+:focus-visible {
+  outline: 2px solid var(--color-violet-soft);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Thin, quiet scrollbars. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.08);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(255 255 255 / 0.16);
+}
+
+/* Range slider in brand colours. */
+input[type='range'].slider {
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-violet) var(--fill, 50%), rgb(255 255 255 / 0.1) var(--fill, 50%));
+  cursor: pointer;
+}
+input[type='range'].slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgb(139 92 246 / 0.35);
+  transition: box-shadow 150ms;
+}
+input[type='range'].slider:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 6px rgb(139 92 246 / 0.35);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.04) 25%, rgb(255 255 255 / 0.09) 50%, rgb(255 255 255 / 0.04) 75%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }
 
 /* The overlay window is transparent: only its panel is painted. */
