@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { KbHit, KbStatus } from '../../../shared/answers'
 import { errorMessage, subscribe } from '../ipc'
+import { useSettingsStore } from '../store'
 import { Badge, Button, Card, ErrorBanner } from '../ui'
 
 export function NotesPage() {
@@ -9,6 +10,7 @@ export function NotesPage() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<KbHit[] | null>(null)
+  const { settings } = useSettingsStore()
 
   useEffect(() => {
     void window.glimpse.invoke('kb:status', null).then(setStatus)
@@ -34,6 +36,16 @@ export function NotesPage() {
     }
   }
 
+  const changeFolder = async (channel: 'kb:choose-folder' | 'kb:reset-folder'): Promise<void> => {
+    setError(null)
+    try {
+      setStatus(await window.glimpse.invoke(channel, null))
+      setMessage(null)
+    } catch (caught) {
+      setError(errorMessage(caught))
+    }
+  }
+
   const search = async (): Promise<void> => {
     setHits(await window.glimpse.invoke('kb:search', { query }))
   }
@@ -46,7 +58,7 @@ export function NotesPage() {
       <Card title="Your notes">
         <p className="mb-3 text-sm leading-relaxed text-white/70">
           Interview notes, prepared answers, your resume, the job description. Glimpse searches them before every answer and, when a
-          question matches one of your prepared answers, shows it immediately. Files are copied into the notes folder shown below and
+          question matches one of your prepared answers, shows it immediately. Files are copied into the notes folder shown below (you can point it at any folder) and
           never leave this PC except as short snippets sent with a question.
         </p>
         <code className="mb-3 block truncate rounded bg-ink px-2 py-1 text-xs text-white/70" title={status.folder}>
@@ -57,6 +69,14 @@ export function NotesPage() {
           <Button tone="ghost" onClick={() => void window.glimpse.invoke('kb:open-folder', null)}>
             Open notes folder
           </Button>
+          <Button tone="ghost" onClick={() => void changeFolder('kb:choose-folder')}>
+            Change folder…
+          </Button>
+          {settings?.notesFolder !== undefined && settings.notesFolder !== '' && (
+            <Button tone="ghost" onClick={() => void changeFolder('kb:reset-folder')}>
+              Use default
+            </Button>
+          )}
           <Button tone="ghost" onClick={() => void window.glimpse.invoke('kb:reindex', null).then(setStatus)}>
             Re-index
           </Button>

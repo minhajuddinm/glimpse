@@ -17,7 +17,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm test",
-    "dist": "npm run build && electron-builder --win nsis --x64",
+    "dist": "node scripts/dist.mjs",
     "selftest": "electron-vite build && electron . --selftest",
     "canary": "electron-vite build && electron . --canary=60",
     "fetch-models": "node scripts/fetch-models.mts",
@@ -78,7 +78,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "include": "build/installer.nsh"
     },
     "extraResources": [
       {

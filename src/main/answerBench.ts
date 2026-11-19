@@ -10,6 +10,7 @@ import { loadEmbedder } from './kb/embedder'
 import { KnowledgeBase } from './kb/manager'
 import { KbStore } from './kb/store'
 import { SecretStore } from './secrets'
+import { dataPaths } from './paths'
 import { SettingsStore } from './settingsStore'
 
 const QUESTIONS = [
@@ -41,9 +42,9 @@ export async function runAnswerBench(): Promise<number> {
   const secrets = new SecretStore(settings)
   await secrets.load()
   const kb = new KnowledgeBase({
-    folder: join(app.getAppPath(), 'notes'),
+    folder: settings.get().notesFolder !== '' ? settings.get().notesFolder : dataPaths().defaultNotes,
     store: new KbStore(db),
-    loadEmbedder: () => loadEmbedder(join(app.getAppPath(), 'models')),
+    loadEmbedder: () => loadEmbedder(app.isPackaged ? join(process.resourcesPath, 'models') : join(app.getAppPath(), 'models')),
     onStatus: () => undefined
   })
   await kb.init()

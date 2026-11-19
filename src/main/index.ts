@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { release, tmpdir } from 'node:os'
+import { release } from 'node:os'
 import { join } from 'node:path'
 import { Notification, app, globalShortcut, type Tray } from 'electron'
 import { broadcast } from './broadcast'
@@ -27,6 +27,7 @@ import { loadEmbedder } from './kb/embedder'
 import { KnowledgeBase } from './kb/manager'
 import { KbStore } from './kb/store'
 import { SecretStore } from './secrets'
+import { dataPaths, useDataRoot } from './paths'
 
 const cli = parseCli(process.argv)
 const headless = isHeadless(cli)
@@ -85,7 +86,7 @@ async function startHeadless(): Promise<void> {
     }
 
     const result = await runSelfTest(overlay)
-    const dir = join(tmpdir(), 'glimpse-selftest')
+    const dir = join(dataPaths().scratch, 'glimpse-selftest')
     mkdirSync(dir, { recursive: true })
     const summary = {
       verdict: result.verdict,
@@ -156,9 +157,8 @@ async function startNormal(): Promise<void> {
 
   // Pillar C: notes folder, API keys and the answer service.
   const secrets = new SecretStore(settings)
-  // Dev: the notes folder sits at the app base. Installed: Documents\Glimpse Notes, because the install folder
-  // may be read-only and is wiped by uninstall/update.
-  const notesFolder = app.isPackaged ? join(app.getPath('documents'), 'Glimpse Notes') : join(app.getAppPath(), 'notes')
+  // The user's chosen folder, else the default (see paths.ts: kept on the drive Glimpse is installed on).
+  const notesFolder = settings.get().notesFolder !== '' ? settings.get().notesFolder : dataPaths().defaultNotes
   const modelsRoot = app.isPackaged ? join(process.resourcesPath, 'models') : join(app.getAppPath(), 'models')
   const kb = new KnowledgeBase({
     folder: notesFolder,
@@ -327,6 +327,7 @@ async function startNormal(): Promise<void> {
 }
 
 if (cli.answerBench) {
+  useDataRoot()
   // Uses the real profile (saved keys, notes); close the running app first.
   void app.whenReady().then(async () => {
     const { runAnswerBench } = await import('./answerBench')
@@ -338,12 +339,19 @@ if (cli.answerBench) {
   })
 } else if (headless) {
   // A throwaway profile keeps the headless run from touching (or being blocked by) the real app.
-  app.setPath('userData', join(tmpdir(), 'glimpse-headless'))
+  app.setPath('userData', join(dataPaths().scratch, 'glimpse-headless'))
   void app.whenReady().then(startHeadless)
   app.on('window-all-closed', () => undefined)
-} else if (!app.requestSingleInstanceLock()) {
-  app.quit()
 } else {
+  useDataRoot()
+  startApp()
+}
+
+function startApp(): void {
+  if (!app.requestSingleInstanceLock()) {
+    app.quit()
+    return
+  }
   app.on('second-instance', () => {
     showSettingsWindow()
   })

@@ -26,7 +26,9 @@ export const SettingsSchema = z.object({
   /** Check factual claims (numbers, dates, names) from the other side. */
   factCheck: z.boolean(),
   /** Which answer provider to use; auto prefers Anthropic, then Groq. */
-  llmProvider: z.enum(['auto', 'anthropic', 'groq'])
+  llmProvider: z.enum(['auto', 'anthropic', 'groq']),
+  /** Notes folder chosen by the user; empty = the default location. */
+  notesFolder: z.string().max(1000)
 })
 export type Settings = z.infer<typeof SettingsSchema>
 export type SettingKey = keyof Settings
@@ -52,6 +54,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoAnswer: true,
   factCheck: false,
   llmProvider: 'auto',
+  notesFolder: '',
   hotkeys: DEFAULT_HOTKEYS
 }
 

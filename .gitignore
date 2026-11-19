@@ -14,3 +14,7 @@ bench/real/
 *.jfif
 # Your personal notes: never committed.
 notes/
+# App data when run from source on a non-system drive.
+.glimpse-data/
+# Build download caches (kept on this drive).
+.cache/

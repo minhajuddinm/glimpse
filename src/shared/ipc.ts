@@ -103,6 +103,8 @@ export const ipcContract = {
     response: z.object({ added: z.array(z.string()), skipped: z.array(z.string()), status: KbStatusSchema })
   },
   'kb:open-folder': { request: z.null(), response: z.null() },
+  'kb:choose-folder': { request: z.null(), response: KbStatusSchema },
+  'kb:reset-folder': { request: z.null(), response: KbStatusSchema },
   'kb:reindex': { request: z.null(), response: KbStatusSchema },
   'kb:search': { request: z.object({ query: z.string().max(500) }), response: z.array(KbHitSchema) },
   'live:matrix': { request: z.null(), response: z.array(MatrixRowSchema) }

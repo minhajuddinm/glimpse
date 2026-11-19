@@ -44,6 +44,8 @@ export const INVOKE_CHANNELS = [
   'kb:status',
   'kb:add-files',
   'kb:open-folder',
+  'kb:choose-folder',
+  'kb:reset-folder',
   'kb:reindex',
   'kb:search'
 ] as const satisfies readonly InvokeChannel[]

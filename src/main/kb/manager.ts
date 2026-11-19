@@ -47,25 +47,46 @@ export class KnowledgeBase {
   private state: KbStatus['state'] = 'idle'
   private message = ''
   private lastIndexedAt: number | null = null
+  private current: string
 
-  constructor(private readonly options: KnowledgeBaseOptions) {}
+  constructor(private readonly options: KnowledgeBaseOptions) {
+    this.current = options.folder
+  }
 
   get folder(): string {
-    return this.options.folder
+    return this.current
   }
 
   async init(): Promise<void> {
-    await mkdir(this.options.folder, { recursive: true })
-    const readme = join(this.options.folder, 'README.txt')
-    if (!existsSync(readme)) await writeFile(readme, README, 'utf8')
     try {
       this.embedder = await this.options.loadEmbedder()
     } catch (error) {
       this.embedder = null
       this.message = `Meaning-based search is off (${error instanceof Error ? error.message : String(error)}); keyword search still works.`
     }
+    await this.open()
+  }
+
+  /** Switches to another notes folder (files are not moved); the index follows the new folder. */
+  async setFolder(folder: string): Promise<void> {
+    this.stopWatching()
+    this.current = folder
+    await this.open()
+  }
+
+  private stopWatching(): void {
+    if (this.debounce !== null) clearTimeout(this.debounce)
+    this.debounce = null
+    this.watcher?.close()
+    this.watcher = null
+  }
+
+  private async open(): Promise<void> {
+    await mkdir(this.current, { recursive: true })
+    const readme = join(this.current, 'README.txt')
+    if (!existsSync(readme)) await writeFile(readme, README, 'utf8')
     await this.reindex()
-    this.watcher = watch(this.options.folder, { recursive: true }, () => {
+    this.watcher = watch(this.current, { recursive: true }, () => {
       if (this.debounce !== null) clearTimeout(this.debounce)
       this.debounce = setTimeout(() => {
         void this.reindex()
@@ -82,7 +103,7 @@ export class KnowledgeBase {
 
   status(): KbStatus {
     return {
-      folder: this.options.folder,
+      folder: this.current,
       state: this.state,
       files: this.options.store.files(),
       chunks: this.options.store.chunkCount(),
@@ -119,8 +140,8 @@ export class KnowledgeBase {
       }
       const extension = extname(source)
       const stem = basename(source, extension)
-      let target = join(this.options.folder, `${stem}${extension}`)
-      for (let n = 2; existsSync(target); n++) target = join(this.options.folder, `${stem} (${n})${extension}`)
+      let target = join(this.current, `${stem}${extension}`)
+      for (let n = 2; existsSync(target); n++) target = join(this.current, `${stem} (${n})${extension}`)
       await copyFile(source, target)
       added.push(basename(target))
     }
@@ -159,11 +180,11 @@ export class KnowledgeBase {
     this.state = 'indexing'
     this.emit()
     try {
-      const files = await this.listFiles(this.options.folder)
+      const files = await this.listFiles(this.current)
       const known = this.options.store.hashes()
       const seen = new Set<string>()
       for (const file of files) {
-        const name = relative(this.options.folder, file).replace(/\\/g, '/')
+        const name = relative(this.current, file).replace(/\\/g, '/')
         seen.add(name)
         const hash = createHash('sha1').update(await readFile(file)).digest('hex')
         if (known.get(name) === hash) continue

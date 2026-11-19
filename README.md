@@ -17,7 +17,9 @@ A real-time conversation copilot for **Windows**. It listens to your call (your 
 
 ## Install
 
-Download `Glimpse Setup x.y.z.exe` (or build it with `npm run dist`) and run it. It installs per user, needs no admin rights, and includes the default speech and search models. The installer is not code-signed yet, so SmartScreen may warn: choose **More info → Run anyway**. Notes live in `Documents\Glimpse Notes` for the installed app.
+Download `Glimpse Setup x.y.z.exe` (or build it with `npm run dist`) and run it. It installs per user, needs no admin rights, lets you pick the install folder, and includes the default speech and search models. The installer is not code-signed yet, so SmartScreen may warn: choose **More info → Run anyway**.
+
+**Where your data lives.** Installed on a drive other than Windows (e.g. `D:\Projects\Glimpse`), Glimpse keeps everything on that drive, next to the install: `D:\Projects\Glimpse Data` (settings, encrypted keys, caches) and `D:\Projects\Glimpse Notes`. Installed on C:, it uses `%APPDATA%\Glimpse` and `Documents\Glimpse Notes`. Never inside the install folder itself, because uninstalling or updating deletes it. Run from source on a non-system drive, data goes to `.glimpse-data/` in the repo.
 
 ## Getting started (from source)
 
@@ -32,7 +34,7 @@ npm run bench:audio  # make the 24-sentence benchmark audio with the Windows voi
 npm run bench:asr    # benchmark the installed models (WER, latency, real-time factor)
 npm run bench:kb     # notes search accuracy (G11)
 npm run bench:answer # live answers with the keys saved in Settings: time to first words (G7); close the app first
-npm run dist       # build a Windows installer into release/
+npm run dist       # build a Windows installer into release/ (download caches kept in .cache/)
 ```
 
 Glimpse runs in the system tray. Click the violet dot to open Settings.
@@ -109,7 +111,7 @@ Windows 10 before 2004 (`WDA_MONITOR` capture-safe mode) is implemented but has 
 ## Answers and your notes (Pillar C)
 
 - When the other side asks a question, Glimpse answers on the overlay in under 55 words. Turn auto-answer and fact-checking on or off in **Settings → Answers**; add your resume or job description there too.
-- **Your notes come first.** In **Settings → Notes**, **Add files…** copies files into the notes folder (`notes/` next to the app when run from source; `Documents\Glimpse Notes` when installed). **Open notes folder** opens it. Supported: .md .txt .docx .pdf .json .csv. Write prepared answers as `Q: … / A: …` or as a heading ending in `?`. A matching prepared answer appears instantly, marked *from your notes*, then the model refines it. Search runs on this PC (keyword + a local embedding model).
+- **Your notes come first.** In **Settings → Notes**, **Add files…** copies files into the notes folder (see *Where your data lives*; from source it is `notes/`). **Open notes folder** opens it, and **Change folder…** points Glimpse at any folder you like (**Use default** switches back). Supported: .md .txt .docx .pdf .json .csv. Write prepared answers as `Q: … / A: …` or as a heading ending in `?`. A matching prepared answer appears instantly, marked *from your notes*, then the model refines it. Search runs on this PC (keyword + a local embedding model).
 - **Pick a provider** under **Use**: Auto (Claude if its key is saved, else Groq), Anthropic only, or Groq only. Without a key, prepared answers from notes still work.
 - Measured on this PC (`npm run bench:answer`, 8 questions): Claude first words p50 362 ms / p95 423 ms; Groq p50 391 ms with occasional free-tier delays (p95 1.7 s). Add ~0.5 s of speech-recognition time for a spoken question.
 

@@ -7,6 +7,18 @@ import { SUPPORTED_EXTENSIONS } from './kb/parsers'
 import type { SecretStore } from './secrets'
 import { isTrustedSender } from './security'
 import type { SettingsStore } from './settingsStore'
+import { dataPaths, installFolder } from './paths'
+import { relative, isAbsolute } from 'node:path'
+
+/** Rejects folders the uninstaller or an update would delete. */
+function checkNotesFolder(folder: string): void {
+  const install = installFolder()
+  if (install === null) return
+  const rel = relative(install, folder)
+  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) {
+    throw new Error('Pick a folder outside the Glimpse install folder: uninstalling or updating Glimpse deletes everything in it.')
+  }
+}
 
 export interface AnswerHandlerContext {
   readonly settings: SettingsStore
@@ -101,6 +113,24 @@ export function registerAnswerHandlers(ctx: AnswerHandlerContext): void {
     if (result.canceled || result.filePaths.length === 0) return { added: [], skipped: [], status: kb.status() }
     const { added, skipped } = await kb.addFiles(result.filePaths)
     return { added, skipped, status: kb.status() }
+  })
+  registerHandler('kb:choose-folder', isTrustedSender, async (_request, event) => {
+    if (kb === null) return EMPTY_KB
+    const owner = BrowserWindow.fromWebContents(event.sender)
+    const options = { title: 'Choose your notes folder', buttonLabel: 'Use this folder', defaultPath: kb.folder, properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[] }
+    const result = owner === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(owner, options)
+    const folder = result.filePaths[0]
+    if (result.canceled || folder === undefined) return kb.status()
+    checkNotesFolder(folder)
+    settings.update({ notesFolder: folder })
+    await kb.setFolder(folder)
+    return kb.status()
+  })
+  registerHandler('kb:reset-folder', isTrustedSender, async () => {
+    if (kb === null) return EMPTY_KB
+    settings.update({ notesFolder: '' })
+    await kb.setFolder(dataPaths().defaultNotes)
+    return kb.status()
   })
   registerHandler('kb:open-folder', isTrustedSender, async () => {
     if (kb !== null) await shell.openPath(kb.folder)
