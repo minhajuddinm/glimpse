@@ -118,7 +118,7 @@ export function registerAllHandlers(ctx: HandlerContext): void {
   const { pipeline, companion } = ctx
   const emptyStatus = { state: 'off' as const, label: '', message: '' }
   registerHandler('capture:config', isTrustedSender, () =>
-    pipeline?.control() ?? { micDeviceId: null, micEnabled: false, loopbackEnabled: false, paused: true, retry: 0 }
+    pipeline?.control() ?? { micDeviceId: null, micEnabled: false, loopbackEnabled: false, paused: true, pauseMessage: 'Not running.', retry: 0 }
   )
   registerHandler('capture:report', isTrustedSender, ({ them, you, devices }, event) => {
     // Only the hidden capture page reports capture state.

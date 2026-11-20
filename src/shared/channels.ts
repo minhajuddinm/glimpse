@@ -48,7 +48,17 @@ export const INVOKE_CHANNELS = [
   'kb:choose-folder',
   'kb:reset-folder',
   'kb:reindex',
-  'kb:search'
+  'kb:search',
+  'meetings:state',
+  'meetings:start',
+  'meetings:stop',
+  'meetings:list',
+  'meetings:get',
+  'meetings:summarize',
+  'meetings:rename',
+  'meetings:delete',
+  'meetings:export',
+  'meetings:open-file'
 ] as const satisfies readonly InvokeChannel[]
 
 export const EVENT_CHANNELS = [
@@ -62,5 +72,7 @@ export const EVENT_CHANNELS = [
   'transcript:update',
   'companion:info',
   'answers:update',
-  'kb:status'
+  'kb:status',
+  'meetings:state',
+  'meetings:list'
 ] as const satisfies readonly EventChannel[]

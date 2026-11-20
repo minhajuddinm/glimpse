@@ -145,7 +145,7 @@ class SourceCapture {
   }
 }
 
-let control: CaptureControl = { micDeviceId: null, micEnabled: false, loopbackEnabled: false, paused: true, retry: 0 }
+let control: CaptureControl = { micDeviceId: null, micEnabled: false, loopbackEnabled: false, paused: true, pauseMessage: '', retry: 0 }
 
 const loopback = new SourceCapture('them', async () => {
   // Main answers getDisplayMedia with the screen plus "loopback": the system audio mix. Only audio is kept.
@@ -201,8 +201,8 @@ async function apply(next: CaptureControl): Promise<void> {
   }
 
   if (next.paused) {
-    loopback.stop('paused', 'Paused (panic hide).')
-    microphone.stop('paused', 'Paused (panic hide).')
+    loopback.stop('paused', next.pauseMessage)
+    microphone.stop('paused', next.pauseMessage)
     return
   }
   if (!next.loopbackEnabled) loopback.stop('muted', 'Muted.')

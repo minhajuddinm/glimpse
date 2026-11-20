@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AudioLines, Eye, EyeOff, Keyboard, MessageSquareText, NotebookPen, ScanEye, Settings2, Smartphone, type LucideIcon } from 'lucide-react'
+import { AudioLines, CalendarClock, Eye, EyeOff, Keyboard, MessageSquareText, NotebookPen, ScanEye, Settings2, Smartphone, type LucideIcon } from 'lucide-react'
 import { displayAccelerator } from '../../shared/accelerator'
 import type { OverlayState } from '../../shared/capture'
 import type { AudioStatus } from '../../shared/transcript'
@@ -9,6 +9,7 @@ import { AudioPage } from './pages/AudioPage'
 import { CapturePage } from './pages/CapturePage'
 import { CompanionPage } from './pages/CompanionPage'
 import { GeneralPage } from './pages/GeneralPage'
+import { MeetingsPage } from './pages/MeetingsPage'
 import { HotkeysPage } from './pages/HotkeysPage'
 import { NotesPage } from './pages/NotesPage'
 import { IS_MAC } from './platform'
@@ -26,6 +27,7 @@ interface Tab {
 const TABS = [
   { id: 'general', label: 'General', icon: Settings2, title: 'General', description: 'Answer style and how the overlay looks and behaves.' },
   { id: 'answers', label: 'Answers', icon: MessageSquareText, title: 'Answers', description: 'Your AI provider, when Glimpse answers, and what it knows about you.' },
+  { id: 'meetings', label: 'Meetings', icon: CalendarClock, title: 'Meetings', description: 'Record a meeting and get its minutes: summary, decisions, action items and open questions.' },
   { id: 'notes', label: 'Notes', icon: NotebookPen, title: 'Notes', description: 'Prepared answers and background Glimpse searches before every answer.' },
   { id: 'audio', label: 'Audio', icon: AudioLines, title: 'Audio', description: 'Your microphone, the other side of the call, and live transcription.' },
   { id: 'companion', label: 'Companion', icon: Smartphone, title: 'Companion', description: 'Follow the transcript and answers on your phone or a second screen.' },
@@ -157,6 +159,7 @@ export function App() {
           <div className="space-y-5">
             {tab === 'general' && <GeneralPage />}
             {tab === 'answers' && <AnswersPage />}
+            {tab === 'meetings' && <MeetingsPage />}
             {tab === 'notes' && <NotesPage />}
             {tab === 'audio' && <AudioPage />}
             {tab === 'companion' && <CompanionPage />}

@@ -20,6 +20,7 @@ import {
   TranscriptSnapshotSchema
 } from './transcript'
 import { AnswersSnapshotSchema, KbHitSchema, KbStatusSchema, KeyStatusSchema } from './answers'
+import { MEETING_TITLE_MAX, MeetingDetailSchema, MeetingStateSchema, MeetingSummarySchema } from './meetings'
 
 /** What the hidden capture page should be doing. `retry` increments when the user presses Retry. */
 export const CaptureControlSchema = z.object({
@@ -27,6 +28,8 @@ export const CaptureControlSchema = z.object({
   micEnabled: z.boolean(),
   loopbackEnabled: z.boolean(),
   paused: z.boolean(),
+  /** Why capture is paused, shown on the Audio page. */
+  pauseMessage: z.string(),
   retry: z.number().int()
 })
 export type CaptureControl = z.infer<typeof CaptureControlSchema>
@@ -108,7 +111,17 @@ export const ipcContract = {
   'kb:reset-folder': { request: z.null(), response: KbStatusSchema },
   'kb:reindex': { request: z.null(), response: KbStatusSchema },
   'kb:search': { request: z.object({ query: z.string().max(500) }), response: z.array(KbHitSchema) },
-  'live:matrix': { request: z.null(), response: z.array(MatrixRowSchema) }
+  'live:matrix': { request: z.null(), response: z.array(MatrixRowSchema) },
+  'meetings:state': { request: z.null(), response: MeetingStateSchema },
+  'meetings:start': { request: z.object({ title: z.string().max(MEETING_TITLE_MAX) }), response: MeetingStateSchema },
+  'meetings:stop': { request: z.null(), response: MeetingStateSchema },
+  'meetings:list': { request: z.null(), response: z.array(MeetingSummarySchema) },
+  'meetings:get': { request: z.object({ id: z.number().int() }), response: MeetingDetailSchema.nullable() },
+  'meetings:summarize': { request: z.object({ id: z.number().int() }), response: z.null() },
+  'meetings:rename': { request: z.object({ id: z.number().int(), title: z.string().min(1).max(MEETING_TITLE_MAX) }), response: z.null() },
+  'meetings:delete': { request: z.object({ id: z.number().int() }), response: z.null() },
+  'meetings:export': { request: z.object({ id: z.number().int() }), response: z.string().nullable() },
+  'meetings:open-file': { request: z.object({ id: z.number().int() }), response: z.null() }
 } as const satisfies Record<string, { request: z.ZodType; response: z.ZodType }>
 
 /** Main → renderer pushes. */
@@ -123,7 +136,9 @@ export const ipcEvents = {
   'transcript:update': TranscriptSnapshotSchema,
   'companion:info': CompanionInfoSchema,
   'answers:update': AnswersSnapshotSchema,
-  'kb:status': KbStatusSchema
+  'kb:status': KbStatusSchema,
+  'meetings:state': MeetingStateSchema,
+  'meetings:list': z.array(MeetingSummarySchema)
 } as const satisfies Record<string, z.ZodType>
 
 export type IpcContract = typeof ipcContract

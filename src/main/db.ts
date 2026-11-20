@@ -37,7 +37,27 @@ const MIGRATIONS: readonly string[] = [
      qvec     BLOB
    ) STRICT;
    CREATE INDEX kb_chunks_file ON kb_chunks(file);
-   CREATE VIRTUAL TABLE kb_fts USING fts5(question, text, tokenize = 'porter unicode61');`
+   CREATE VIRTUAL TABLE kb_fts USING fts5(question, text, tokenize = 'porter unicode61');`,
+  `CREATE TABLE meetings (
+     id         INTEGER PRIMARY KEY,
+     title      TEXT NOT NULL,
+     started_at INTEGER NOT NULL,
+     ended_at   INTEGER,
+     status     TEXT NOT NULL CHECK (status IN ('recording', 'summarizing', 'done', 'error', 'interrupted')),
+     minutes    TEXT,
+     error      TEXT,
+     model      TEXT,
+     file       TEXT,
+     words      INTEGER NOT NULL DEFAULT 0
+   ) STRICT;
+   CREATE TABLE meeting_lines (
+     id         INTEGER PRIMARY KEY,
+     meeting_id INTEGER NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+     source     TEXT NOT NULL CHECK (source IN ('them', 'you')),
+     text       TEXT NOT NULL,
+     at         INTEGER NOT NULL
+   ) STRICT;
+   CREATE INDEX meeting_lines_meeting ON meeting_lines(meeting_id);`
 ]
 
 export function openDatabase(file: string): Db {

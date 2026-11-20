@@ -4,7 +4,7 @@ import { isHeadless, parseCli } from '../src/main/cli'
 describe('parseCli', () => {
   it('is a normal start with no flags', () => {
     const options = parseCli(['electron.exe', '.'])
-    expect(options).toEqual({ selfTest: false, canarySeconds: null, answerBench: false })
+    expect(options).toEqual({ selfTest: false, canarySeconds: null, answerBench: false, minutesBench: false })
     expect(isHeadless(options)).toBe(false)
   })
 

@@ -58,3 +58,14 @@ One line per deviation from BRIEF v2, with the reason.
 - **Ad-hoc signed, not notarized** (no paid Apple Developer ID): Apple silicon needs at least an ad-hoc signature to run. First launch needs right-click → Open, or `xattr -cr /Applications/Glimpse.app`.
 - **One DMG per architecture, built on a matching runner** (`macos-15` arm64, `macos-15-intel` x64): the speech addon is installed per arch by npm. The workflow is manual or tag-triggered because macOS runner minutes count 10× on a private repo.
 - **Shortcuts keep Ctrl+Alt on macOS** (Control+Option, shown as ⌃⌥): ⌘ combinations collide with app shortcuts. Users can rebind to ⌘ in Settings.
+
+## Meetings and minutes (2026-11-20)
+- **Transcript saved line by line to SQLite** (`meetings`, `meeting_lines`, migration 4) while a meeting runs, not held in memory: a crash or forced quit keeps it, and the next start marks it *interrupted* so minutes can still be written.
+- **Minutes use the "deep" model** (Sonnet 5.5 with the server-side fallback, or gpt-oss on Groq): minutes are not latency-bound, and quality matters more than speed. Measured on a scripted 20-line sales call: Sonnet 5.2 s, Groq 1.2 s, both with all sections and key facts.
+- **Markdown with fixed headings, not JSON**: works the same on both providers, renders directly, and is the file format saved to the notes folder. `cleanMinutes` strips fences/preambles and rejects output without a Summary.
+- **Long meetings**: one request up to ~120K transcript tokens with Claude; with Groq (8K tokens/min on the free tier) the transcript is split into ~4.5K-token parts at line boundaries, minuted per part, then merged.
+- **Only minutes go into the notes folder**, never transcripts: raw talk would crowd out prepared answers in notes search.
+- **Meetings under 25 words** get no automatic minutes (mis-clicks, tests); "Write minutes" still works on them.
+- **Listen mode**: "Only during meetings" pauses capture through the same path as panic hide (streams stopped, not just ignored), with its own message on the Audio page. Default stays "Always" so live answers keep working without a meeting.
+- **No audio recording**: text only, for privacy and consent reasons. The app reminds users to tell others they are being transcribed.
+- Known limit: a sentence still being spoken when you press Stop may be cut (its final text arrives after the meeting closed).

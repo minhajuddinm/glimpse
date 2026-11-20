@@ -27,7 +27,8 @@
     "bench:pipeline": "node scripts/bench-pipeline.mts",
     "bench:kb": "vitest run -c vitest.bench.mts --reporter verbose",
     "bench:answer": "electron-vite build && electron . --answer-bench",
-    "bench:idle": "node scripts/bench-idle.mts"
+    "bench:idle": "node scripts/bench-idle.mts",
+    "bench:minutes": "electron-vite build && electron . --minutes-bench"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.10.0",

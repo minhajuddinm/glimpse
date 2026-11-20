@@ -71,6 +71,7 @@ Glimpse runs in the system tray (the menu bar on macOS). Click its icon to open 
 | Answer from a screenshot | `Ctrl+Alt+S` |
 | Mute / unmute mic | `Ctrl+Alt+M` |
 | Clear answers | `Ctrl+Alt+X` |
+| Start / stop a meeting | `Ctrl+Alt+N` |
 
 Another app may already own a shortcut (Claude Desktop's Quick Entry uses `Ctrl+Alt+Space`, for example). Glimpse then shows a notification and flags the key in Settings → Hotkeys. Pick another one there.
 
@@ -126,6 +127,19 @@ Windows 10 before 2004 (`WDA_MONITOR` capture-safe mode) is implemented but has 
 - **Your notes come first.** In **Settings → Notes**, **Add files…** copies files into the notes folder (see *Where your data lives*; from source it is `notes/`). **Open notes folder** opens it, and **Change folder…** points Glimpse at any folder you like (**Use default** switches back). Supported: .md .txt .docx .pdf .json .csv. Write prepared answers as `Q: … / A: …` or as a heading ending in `?`. A matching prepared answer appears instantly, marked *from your notes*, then the model refines it. Search runs on this PC (keyword + a local embedding model).
 - **Pick a provider** under **Use**: Auto (Claude if its key is saved, else Groq), Anthropic only, or Groq only. Without a key, prepared answers from notes still work.
 - Measured on this PC (`npm run bench:answer`, 8 questions): Claude first words p50 362 ms / p95 423 ms; Groq p50 391 ms with occasional free-tier delays (p95 1.7 s). Add ~0.5 s of speech-recognition time for a spoken question.
+
+## Meetings and minutes
+
+Start a meeting in **Settings → Meetings** (or press `Ctrl+Alt+N` from any app), and stop it the same way. While it runs, every transcript line is saved on this computer, so a crash or a forced quit keeps it (the meeting shows as *Interrupted* and you can still write its minutes). When you stop, Glimpse writes the minutes with your answer provider (Claude Sonnet 5.5, or Groq):
+
+- **Summary**, **Decisions**, **Action items** (`- [ ] Owner — task (due)`), **Open questions** and **Key details** (names, numbers, dates).
+- Copy them, export the minutes plus the full transcript as Markdown, rewrite them, rename or delete the meeting.
+- By default the minutes (not the transcript) are also saved to `<notes folder>/Meetings/`, so later answers can draw on past meetings. Turn this off in Meeting settings.
+- **When Glimpse listens:** *Always* (default; live answers work any time) or *Only during meetings* (microphone and system audio are off until you start a meeting).
+- Long meetings are summarised in one pass with Claude; with Groq's free tier they are split into parts and merged.
+- `npm run bench:minutes` writes minutes for a scripted sample call with your saved keys and checks the sections and key facts.
+
+Recording laws differ by place, and many require everyone on the call to agree to being transcribed: tell the others when you start a meeting.
 
 ## Companion page (phone or second computer)
 

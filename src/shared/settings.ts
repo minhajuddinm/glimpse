@@ -30,7 +30,11 @@ export const SettingsSchema = z.object({
   /** Notes folder chosen by the user; empty = the default location. */
   notesFolder: z.string().max(1000),
   /** Show the overlay as soon as Glimpse starts; off = it stays hidden until you show it. */
-  overlayOnStart: z.boolean()
+  overlayOnStart: z.boolean(),
+  /** always: listen whenever Glimpse runs. meetings: the mic and system audio are off until a meeting is started. */
+  listenMode: z.enum(['always', 'meetings']),
+  /** Save each meeting's minutes as a Markdown file in the notes folder (Meetings subfolder). */
+  saveMinutesToNotes: z.boolean()
 })
 export type Settings = z.infer<typeof SettingsSchema>
 export type SettingKey = keyof Settings
@@ -58,6 +62,8 @@ export const DEFAULT_SETTINGS: Settings = {
   llmProvider: 'auto',
   notesFolder: '',
   overlayOnStart: false,
+  listenMode: 'always',
+  saveMinutesToNotes: true,
   hotkeys: DEFAULT_HOTKEYS
 }
 

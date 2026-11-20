@@ -31,6 +31,8 @@ export interface PipelineOptions {
   readonly appRoot: string
   readonly getSettings: () => Settings
   readonly isPanic: () => boolean
+  /** True when capture should be off for now (listen-only-during-meetings and no meeting running). */
+  readonly isIdle?: (() => boolean) | undefined
   readonly broadcastStatus: (status: AudioStatus) => void
   readonly broadcastLevels: (levels: AudioLevels) => void
   readonly broadcastTranscript: (snapshot: TranscriptSnapshot) => void
@@ -85,7 +87,8 @@ export class AudioPipeline {
       micDeviceId: settings.micDeviceId,
       micEnabled: !settings.micMuted,
       loopbackEnabled: !settings.loopbackMuted,
-      paused: this.options.isPanic(),
+      paused: this.options.isPanic() || (this.options.isIdle?.() ?? false),
+      pauseMessage: this.options.isPanic() ? 'Paused (panic hide).' : 'Off until a meeting starts (Meetings tab or hotkey).',
       retry: this.retryCount
     }
   }

@@ -28,6 +28,9 @@ import { KnowledgeBase } from './kb/manager'
 import { KbStore } from './kb/store'
 import { SecretStore } from './secrets'
 import { dataPaths, useDataRoot } from './paths'
+import { MeetingManager } from './meetings/manager'
+import { MeetingStore } from './meetings/store'
+import { notesMeetingFiles, registerMeetingHandlers } from './meetingHandlers'
 
 const cli = parseCli(process.argv)
 const headless = isHeadless(cli)
@@ -181,6 +184,22 @@ async function startNormal(): Promise<void> {
     return cachedProvider.provider
   }
   let companion: CompanionManager | null = null
+  // Meetings: full transcripts saved while a meeting runs, minutes written when it stops.
+  const meetingStore = new MeetingStore(db)
+  const meetings = new MeetingManager({
+    store: meetingStore,
+    provider,
+    context: () => readContext(settings),
+    files: notesMeetingFiles(settings, () => kb.folder),
+    now: () => Date.now(),
+    onState: (state) => {
+      broadcast('meetings:state', state)
+    },
+    onListChanged: (list) => {
+      broadcast('meetings:list', list)
+    }
+  })
+  meetings.init()
   const answers = new AnswerService({
     scheduler: new AnswerScheduler(() => Date.now()),
     search: (query) => kb.search(query),
@@ -197,7 +216,9 @@ async function startNormal(): Promise<void> {
   const pipeline = new AudioPipeline({
     onFinal: (segment) => {
       answers.onSegment(segment)
+      meetings.onSegment(segment)
     },
+    isIdle: () => settings.get().listenMode === 'meetings' && !meetings.active,
     appRoot: app.isPackaged ? process.resourcesPath : app.getAppPath(),
     getSettings: () => settings.get(),
     isPanic: () => panic.captureMuted,
@@ -264,7 +285,14 @@ async function startNormal(): Promise<void> {
     },
     clearAnswers: () => {
       answers.clear()
+    },
+    toggleMeeting: () => {
+      meetings.toggle()
+      pipeline.sync()
     }
+  })
+  registerMeetingHandlers(meetings, meetingStore, () => {
+    pipeline.sync()
   })
   registerAnswerHandlers({
     settings,
@@ -293,6 +321,7 @@ async function startNormal(): Promise<void> {
   })
 
   app.on('before-quit', () => {
+    meetings.shutdown()
     kb.stop()
     answers.clear()
     pipeline.stop()
@@ -332,7 +361,17 @@ async function startNormal(): Promise<void> {
   await companionManager.sync()
 }
 
-if (cli.answerBench) {
+if (cli.minutesBench) {
+  useDataRoot()
+  void app.whenReady().then(async () => {
+    const { runMinutesBench } = await import('./minutesBench')
+    const code = await runMinutesBench().catch((error: unknown) => {
+      console.error('MINUTES_BENCH_ERROR', error)
+      return 1
+    })
+    app.exit(code)
+  })
+} else if (cli.answerBench) {
   useDataRoot()
   // Uses the real profile (saved keys, notes); close the running app first.
   void app.whenReady().then(async () => {

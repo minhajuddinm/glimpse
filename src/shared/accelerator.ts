@@ -9,7 +9,8 @@ export const HOTKEY_ACTIONS = [
   'regenerate',
   'screenshot',
   'toggleMic',
-  'clearAnswers'
+  'clearAnswers',
+  'toggleMeeting'
 ] as const
 export type HotkeyAction = (typeof HOTKEY_ACTIONS)[number]
 
@@ -22,7 +23,8 @@ export const HOTKEY_LABELS: Record<HotkeyAction, string> = {
   regenerate: 'Regenerate the last answer',
   screenshot: 'Answer from a screenshot of your screen',
   toggleMic: 'Mute / unmute your microphone',
-  clearAnswers: 'Clear answers'
+  clearAnswers: 'Clear answers',
+  toggleMeeting: 'Start / stop a meeting (writes minutes when it stops)'
 }
 
 const MODIFIER_ORDER = ['Ctrl', 'Alt', 'Shift', 'Super'] as const
@@ -158,7 +160,8 @@ export const DEFAULT_HOTKEYS = {
   regenerate: 'Ctrl+Alt+R',
   screenshot: 'Ctrl+Alt+S',
   toggleMic: 'Ctrl+Alt+M',
-  clearAnswers: 'Ctrl+Alt+X'
+  clearAnswers: 'Ctrl+Alt+X',
+  toggleMeeting: 'Ctrl+Alt+N'
 } as const satisfies Record<HotkeyAction, string>
 
 /** Later actions have defaults so settings saved by an older version still parse. */
@@ -171,7 +174,8 @@ export const HotkeysSchema = z.object({
   regenerate: AcceleratorSchema.default(DEFAULT_HOTKEYS.regenerate),
   screenshot: AcceleratorSchema.default(DEFAULT_HOTKEYS.screenshot),
   toggleMic: AcceleratorSchema.default(DEFAULT_HOTKEYS.toggleMic),
-  clearAnswers: AcceleratorSchema.default(DEFAULT_HOTKEYS.clearAnswers)
+  clearAnswers: AcceleratorSchema.default(DEFAULT_HOTKEYS.clearAnswers),
+  toggleMeeting: AcceleratorSchema.default(DEFAULT_HOTKEYS.toggleMeeting)
 })
 export type Hotkeys = z.infer<typeof HotkeysSchema>
 
