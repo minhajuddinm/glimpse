@@ -25,6 +25,7 @@ import { errorMessage, subscribe } from '../ipc'
 import { IS_MAC } from '../platform'
 import { useSettingsStore } from '../store'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Kbd, Loading, Notice, Row, Select, TextInput, Toggle } from '../ui'
+import { CalendarCard } from './CalendarCard'
 import { MinutesView } from './MinutesView'
 
 const STATUS: Record<MeetingStatus, { label: string; tone: 'good' | 'bad' | 'warn' | 'neutral' | 'accent' }> = {
@@ -403,6 +404,7 @@ export function MeetingsPage() {
     <>
       {errorBanner}
       <SessionCard state={state} onError={setError} />
+      <CalendarCard meeting={state} />
 
       <Card title="Past meetings" icon={CalendarClock} description="Click one to read its minutes, copy them, export or delete it.">
         {past.length === 0 ? (

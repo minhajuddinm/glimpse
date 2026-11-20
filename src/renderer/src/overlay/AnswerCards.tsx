@@ -1,4 +1,4 @@
-import { BadgeCheck, Lightbulb, MessageSquareQuote, MonitorUp, NotebookPen, Sparkles, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, CalendarClock, Lightbulb, MessageSquareQuote, MonitorUp, NotebookPen, Sparkles, type LucideIcon } from 'lucide-react'
 import type { Answer } from '../../../shared/answers'
 
 const ICON: Record<Answer['kind'], LucideIcon> = {
@@ -6,7 +6,8 @@ const ICON: Record<Answer['kind'], LucideIcon> = {
   'talking-points': Lightbulb,
   'fact-check': BadgeCheck,
   screen: MonitorUp,
-  elaborate: Sparkles
+  elaborate: Sparkles,
+  brief: CalendarClock
 }
 
 const LABEL: Record<Answer['kind'], string> = {
@@ -14,7 +15,8 @@ const LABEL: Record<Answer['kind'], string> = {
   'talking-points': 'TALKING POINTS',
   'fact-check': 'FACT CHECK',
   screen: 'FROM YOUR SCREEN',
-  elaborate: 'MORE DETAIL'
+  elaborate: 'MORE DETAIL',
+  brief: 'MEETING BRIEF'
 }
 
 function Thinking() {

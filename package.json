@@ -33,6 +33,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "1.10.0",
     "@huggingface/transformers": "4.3.2",
+    "ical.js": "2.2.1",
     "koffi": "3.3.8",
     "lucide-react": "1.76.0",
     "mammoth": "1.13.0",

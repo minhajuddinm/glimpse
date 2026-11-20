@@ -58,7 +58,11 @@ export const INVOKE_CHANNELS = [
   'meetings:rename',
   'meetings:delete',
   'meetings:export',
-  'meetings:open-file'
+  'meetings:open-file',
+  'calendar:status',
+  'calendar:set-url',
+  'calendar:refresh',
+  'calendar:brief'
 ] as const satisfies readonly InvokeChannel[]
 
 export const EVENT_CHANNELS = [
@@ -74,5 +78,6 @@ export const EVENT_CHANNELS = [
   'answers:update',
   'kb:status',
   'meetings:state',
-  'meetings:list'
+  'meetings:list',
+  'calendar:status'
 ] as const satisfies readonly EventChannel[]

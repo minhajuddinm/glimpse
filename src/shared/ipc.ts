@@ -20,6 +20,7 @@ import {
   TranscriptSnapshotSchema
 } from './transcript'
 import { AnswersSnapshotSchema, KbHitSchema, KbStatusSchema, KeyStatusSchema } from './answers'
+import { CalendarStatusSchema } from './calendar'
 import { MEETING_TITLE_MAX, MeetingDetailSchema, MeetingStateSchema, MeetingSummarySchema } from './meetings'
 
 /** What the hidden capture page should be doing. `retry` increments when the user presses Retry. */
@@ -121,7 +122,12 @@ export const ipcContract = {
   'meetings:rename': { request: z.object({ id: z.number().int(), title: z.string().min(1).max(MEETING_TITLE_MAX) }), response: z.null() },
   'meetings:delete': { request: z.object({ id: z.number().int() }), response: z.null() },
   'meetings:export': { request: z.object({ id: z.number().int() }), response: z.string().nullable() },
-  'meetings:open-file': { request: z.object({ id: z.number().int() }), response: z.null() }
+  'meetings:open-file': { request: z.object({ id: z.number().int() }), response: z.null() },
+  'calendar:status': { request: z.null(), response: CalendarStatusSchema },
+  /** Saves (encrypted) and syncs the secret iCal address; an empty string disconnects. */
+  'calendar:set-url': { request: z.object({ url: z.string().max(2000) }), response: CalendarStatusSchema },
+  'calendar:refresh': { request: z.null(), response: CalendarStatusSchema },
+  'calendar:brief': { request: z.object({ id: z.string().max(1000) }), response: z.null() }
 } as const satisfies Record<string, { request: z.ZodType; response: z.ZodType }>
 
 /** Main → renderer pushes. */
@@ -138,7 +144,8 @@ export const ipcEvents = {
   'answers:update': AnswersSnapshotSchema,
   'kb:status': KbStatusSchema,
   'meetings:state': MeetingStateSchema,
-  'meetings:list': z.array(MeetingSummarySchema)
+  'meetings:list': z.array(MeetingSummarySchema),
+  'calendar:status': CalendarStatusSchema
 } as const satisfies Record<string, z.ZodType>
 
 export type IpcContract = typeof ipcContract

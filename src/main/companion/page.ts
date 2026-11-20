@@ -87,7 +87,7 @@ export const COMPANION_JS = `(function () {
     if (nearBottom) window.scrollTo(0, document.body.scrollHeight)
   }
   var answersBox = document.getElementById('answers')
-  var LABELS = { answer: 'Answer', 'talking-points': 'Talking points', 'fact-check': 'Fact check', screen: 'From your screen', elaborate: 'More detail' }
+  var LABELS = { answer: 'Answer', 'talking-points': 'Talking points', 'fact-check': 'Fact check', screen: 'From your screen', elaborate: 'More detail', brief: 'Meeting brief' }
   function card(answer, index) {
     var el = document.createElement('div')
     el.className = 'card' + (index > 0 ? ' old' : '') + (answer.status === 'error' ? ' error' : '')

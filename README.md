@@ -141,6 +141,20 @@ Start a meeting in **Settings → Meetings** (or press `Ctrl+Alt+N` from any app
 
 Recording laws differ by place, and many require everyone on the call to agree to being transcribed: tell the others when you start a meeting.
 
+### Calendar
+
+Connect your calendar in **Meetings → Calendar** with its private iCal address. It's read-only, with no Google sign-in, and Glimpse never changes your calendar.
+- **Google Calendar** (web): Settings → your calendar → Integrate calendar → *Secret address in iCal format*.
+- **Outlook**: Settings → Calendar → Shared calendars → Publish a calendar → ICS link.
+
+The address is stored encrypted, like the API keys, and never shown again. Treat it like a password: reset it in your calendar's settings if it leaks. Glimpse syncs every 5 minutes and then:
+- Lists what's happening now and in the next 24 hours, with **Brief** and **Record** buttons.
+- **Brief me before meetings** (on by default): 5 minutes before a meeting with other people or a call link, the overlay shows who you're meeting and what to prepare. The brief comes from the invite and your notes.
+- **Record calendar meetings automatically** (off by default): starts a meeting when one begins and stops it 10 minutes after it ends, with a notification each time. If you stop it yourself, Glimpse won't restart it, and it never stops a meeting you started yourself.
+- A meeting started without a title is named after the calendar meeting happening now.
+
+Repeating meetings, moved or cancelled repeats, and time zones are handled by [ical.js](https://github.com/kewisch/ical.js).
+
 ## Companion page (phone or second computer)
 
 Turn it on in **Settings → Companion**, then scan the QR code. It shows the live transcript and the answers on another device. This is useful when you view this PC through Moonlight or Parsec, where the overlay is hidden from you. It is served from this PC only, never through the internet. By default only this PC can open it; **Allow other devices** opens it to your home network and Tailscale. Every link carries a random access code; **New access code** invalidates old links.

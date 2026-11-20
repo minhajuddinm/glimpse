@@ -69,3 +69,12 @@ One line per deviation from BRIEF v2, with the reason.
 - **Listen mode**: "Only during meetings" pauses capture through the same path as panic hide (streams stopped, not just ignored), with its own message on the Audio page. Default stays "Always" so live answers keep working without a meeting.
 - **No audio recording**: text only, for privacy and consent reasons. The app reminds users to tell others they are being transcribed.
 - Known limit: a sentence still being spoken when you press Stop may be cut (its final text arrives after the meeting closed).
+
+## Calendar (2026-11-20)
+- **Secret iCal address instead of Google OAuth**: no Cloud project, no "unverified app" screen or 100-test-user limit. It works with Google, Outlook and iCloud. It's read-only, which is all briefs and auto-recording need. OAuth stays an option if write access is ever wanted.
+- **The address is a secret**: stored with `safeStorage` like the API keys, write-only over IPC (the renderer only learns *connected*), never logged. Only https:// (webcal:// is rewritten); 20 s timeout, 10 MB cap.
+- **ical.js 2.2.1** (Mozilla, no dependencies) for parsing: it handles RRULE/EXDATE/RECURRENCE-ID and the feed's VTIMEZONE definitions. Its types claim text properties are always strings and `RecurExpansion.next()` always returns a Time; both can be null, so they are read defensively (found by tests).
+- **"Real meeting" = at least 2 attendees or a video-call link**, and not all-day. Only these get briefs or auto-recording, so focus blocks and reminders never start the microphone.
+- **Brief is a new answer kind** (`brief`, ≤ 90 words, Haiku): the prompt gets the invite in `<meeting>` instead of the live transcript, and notes are searched with the invite text.
+- **Auto-recording off by default**, with a notification on every automatic start and stop: being transcribed should never be a surprise. It starts at most 10 minutes late, stops 10 minutes after the calendar end, never restarts a meeting the user stopped, and never stops one the user started.
+- Sync failures keep the last good event list, so a dropped connection doesn't blank it.

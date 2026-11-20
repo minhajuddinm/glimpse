@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const AnswerKindSchema = z.enum(['answer', 'talking-points', 'fact-check', 'screen', 'elaborate'])
+export const AnswerKindSchema = z.enum(['answer', 'talking-points', 'fact-check', 'screen', 'elaborate', 'brief'])
 export type AnswerKind = z.infer<typeof AnswerKindSchema>
 
 export const AnswerSchema = z.object({

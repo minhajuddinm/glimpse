@@ -34,7 +34,11 @@ export const SettingsSchema = z.object({
   /** always: listen whenever Glimpse runs. meetings: the mic and system audio are off until a meeting is started. */
   listenMode: z.enum(['always', 'meetings']),
   /** Save each meeting's minutes as a Markdown file in the notes folder (Meetings subfolder). */
-  saveMinutesToNotes: z.boolean()
+  saveMinutesToNotes: z.boolean(),
+  /** Show a short brief in the overlay 5 minutes before each calendar meeting. */
+  calendarBrief: z.boolean(),
+  /** Start and stop meeting recording with calendar meetings that have other people or a call link. */
+  calendarAutoStart: z.boolean()
 })
 export type Settings = z.infer<typeof SettingsSchema>
 export type SettingKey = keyof Settings
@@ -64,6 +68,8 @@ export const DEFAULT_SETTINGS: Settings = {
   overlayOnStart: false,
   listenMode: 'always',
   saveMinutesToNotes: true,
+  calendarBrief: true,
+  calendarAutoStart: false,
   hotkeys: DEFAULT_HOTKEYS
 }
 

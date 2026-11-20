@@ -1,8 +1,9 @@
 import { safeStorage } from 'electron'
 import type { SettingsStore } from './settingsStore'
 
-export type SecretName = 'anthropic' | 'groq'
-const NAMES: readonly SecretName[] = ['anthropic', 'groq']
+/** API keys, and the calendar's secret address (anyone with it can read the calendar). */
+export type SecretName = 'anthropic' | 'groq' | 'calendar'
+const NAMES: readonly SecretName[] = ['anthropic', 'groq', 'calendar']
 
 /**
  * API keys, encrypted with Windows DPAPI through Electron safeStorage and kept in

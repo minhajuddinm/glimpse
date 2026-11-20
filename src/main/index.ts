@@ -31,6 +31,9 @@ import { dataPaths, useDataRoot } from './paths'
 import { MeetingManager } from './meetings/manager'
 import { MeetingStore } from './meetings/store'
 import { notesMeetingFiles, registerMeetingHandlers } from './meetingHandlers'
+import { CalendarService, fetchFeed } from './calendar/service'
+import { inviteText } from './calendar/ics'
+import { registerCalendarHandlers } from './calendarHandlers'
 
 const cli = parseCli(process.argv)
 const headless = isHeadless(cli)
@@ -200,6 +203,34 @@ async function startNormal(): Promise<void> {
     }
   })
   meetings.init()
+  const notify = (title: string, body: string): void => {
+    if (Notification.isSupported()) new Notification({ title, body, icon: join(app.getAppPath(), 'resources', 'icon.png') }).show()
+  }
+  // Calendar: read-only from the secret iCal address; briefs before meetings, optional auto-recording.
+  const calendar = new CalendarService({
+    url: () => secrets.get('calendar'),
+    fetchText: fetchFeed,
+    now: () => Date.now(),
+    settings: () => settings.get(),
+    meetingActive: () => meetings.active,
+    startMeeting: (title) => {
+      meetings.start(title)
+      pipeline.sync()
+    },
+    stopMeeting: () => {
+      meetings.stop()
+      pipeline.sync()
+    },
+    onBrief: (event) => {
+      void answers.ask(inviteText(event, Date.now()), 'brief')
+    },
+    notify,
+    onStatus: (status) => {
+      broadcast('calendar:status', status)
+    }
+  })
+  /** A meeting started without a title is named after the calendar meeting happening now. */
+  const meetingTitle = (title: string): string => (title.trim() !== '' ? title : (calendar.currentEvent()?.title ?? ''))
   const answers = new AnswerService({
     scheduler: new AnswerScheduler(() => Date.now()),
     search: (query) => kb.search(query),
@@ -287,12 +318,20 @@ async function startNormal(): Promise<void> {
       answers.clear()
     },
     toggleMeeting: () => {
-      meetings.toggle()
+      meetings.toggle(meetingTitle(''))
       pipeline.sync()
     }
   })
-  registerMeetingHandlers(meetings, meetingStore, () => {
+  registerMeetingHandlers(meetings, meetingStore, meetingTitle, () => {
     pipeline.sync()
+  })
+  registerCalendarHandlers({
+    calendar,
+    secrets,
+    now: () => Date.now(),
+    brief: (invite) => {
+      void answers.ask(invite, 'brief')
+    }
   })
   registerAnswerHandlers({
     settings,
@@ -321,6 +360,7 @@ async function startNormal(): Promise<void> {
   })
 
   app.on('before-quit', () => {
+    calendar.stop()
     meetings.shutdown()
     kb.stop()
     answers.clear()
@@ -349,6 +389,7 @@ async function startNormal(): Promise<void> {
   if (settings.get().overlayOnStart) overlay.show()
   showSettingsWindow()
   await secrets.load()
+  calendar.start()
   if (process.platform === 'darwin') {
     // macOS asks once for the microphone; system audio is asked for on first capture (NSAudioCaptureUsageDescription).
     const granted = await systemPreferences.askForMediaAccess('microphone').catch(() => false)

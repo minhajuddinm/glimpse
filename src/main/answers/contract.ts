@@ -5,7 +5,8 @@ export const WORD_LIMITS: Record<AnswerKind, number> = {
   'talking-points': 45,
   'fact-check': 35,
   screen: 55,
-  elaborate: 140
+  elaborate: 140,
+  brief: 90
 }
 
 const PREAMBLE = /^\s*(sure|certainly|absolutely|of course|great question|good question|okay|ok|well|so|here(?:'s| is| are)[^:\n]{0,40}:)[\s,!.:-]*/i

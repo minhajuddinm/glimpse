@@ -26,10 +26,15 @@ export function notesMeetingFiles(settings: SettingsStore, notesFolder: () => st
 }
 
 /** `onActiveChanged` re-applies capture (listen-only-during-meetings turns it on and off). */
-export function registerMeetingHandlers(meetings: MeetingManager, store: MeetingStore, onActiveChanged: () => void): void {
+export function registerMeetingHandlers(
+  meetings: MeetingManager,
+  store: MeetingStore,
+  defaultTitle: (title: string) => string,
+  onActiveChanged: () => void
+): void {
   registerHandler('meetings:state', isTrustedSender, () => meetings.state())
   registerHandler('meetings:start', isTrustedSender, ({ title }) => {
-    const state = meetings.start(title)
+    const state = meetings.start(defaultTitle(title))
     onActiveChanged()
     return state
   })

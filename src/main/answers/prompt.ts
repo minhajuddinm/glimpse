@@ -21,7 +21,9 @@ const TASKS: Record<AnswerKind, string> = {
   'fact-check':
     'Check the claim in the line marked >>>. Start with ✓ if it is correct, ✗ if it is wrong, ⚠ if it is uncertain or depends; then one short reason.',
   screen: 'The user shared their screen. Using the screenshot and the conversation, tell them what to say or do next.',
-  elaborate: 'Give a fuller version of the answer to the line marked >>>: key points and one concrete example, still speakable.'
+  elaborate: 'Give a fuller version of the answer to the line marked >>>: key points and one concrete example, still speakable.',
+  brief:
+    'A meeting starts in a few minutes; its calendar invite is in <meeting>. Brief the user in 3–4 "- " bullets: who they are meeting and what matters about them, the likely purpose, and what to raise or have ready. Use only the invite, <background> and <your_notes>; never guess facts about people. If the notes say nothing about the people, say what to prepare from the invite alone.'
 }
 
 /** The stable part of the prompt (cached): role, rules and the user's background. */
@@ -94,7 +96,10 @@ export function buildPrompt(input: {
 }): BuiltPrompt {
   const budget = input.kind === 'screen' ? 500 : 2500
   const user = [
-    transcriptBlock(input.transcript, input.trigger, budget),
+    // A brief is about the next meeting, not the conversation so far.
+    input.kind === 'brief' ? `<meeting>
+${input.trigger}
+</meeting>` : transcriptBlock(input.transcript, input.trigger, budget),
     noteBlock(input.notes),
     TASKS[input.kind],
     input.correction === undefined ? '' : `Your previous attempt broke the output rules (${input.correction}). Follow them exactly.`
@@ -104,6 +109,6 @@ export function buildPrompt(input: {
   return {
     system: systemPrompt(input.mode, input.kind, input.context),
     user,
-    maxTokens: input.kind === 'elaborate' ? 600 : 300
+    maxTokens: input.kind === 'elaborate' ? 600 : input.kind === 'brief' ? 450 : 300
   }
 }
