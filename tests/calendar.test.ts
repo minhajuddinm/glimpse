@@ -154,3 +154,109 @@ describe('calendar helpers', () => {
     expect(plainText('<p>Hi&nbsp;<b>there</b></p><div>x &lt; y</div>')).toBe('Hi there\nx < y')
   })
 })
+
+describe('parseCalendar edge cases', () => {
+  const wrap = (...lines: string[]): string => ['BEGIN:VCALENDAR', 'VERSION:2.0', ...lines, 'END:VCALENDAR'].join('\r\n')
+  const event = (...lines: string[]): string[] => ['BEGIN:VEVENT', ...lines, 'END:VEVENT']
+  const from = day('2026-11-23T00:00:00Z')
+  const to = day('2026-11-25T00:00:00Z')
+
+  it('reads a calendar holding a series that has ended (COUNT, UNTIL)', () => {
+    const events = parseCalendar(
+      wrap(
+        ...event('UID:count', 'DTSTART:20261120T150000Z', 'DTEND:20261120T160000Z', 'RRULE:FREQ=DAILY;COUNT=4', 'SUMMARY:Count'),
+        ...event('UID:until', 'DTSTART:20261120T170000Z', 'DTEND:20261120T180000Z', 'RRULE:FREQ=DAILY;UNTIL=20261123T170000Z', 'SUMMARY:Until'),
+        ...event('UID:old', 'DTSTART:20250101T090000Z', 'DTEND:20250101T100000Z', 'RRULE:FREQ=WEEKLY;COUNT=3', 'SUMMARY:Long over'),
+        ...event('UID:one', 'DTSTART:20261124T150000Z', 'DTEND:20261124T160000Z', 'SUMMARY:One-off')
+      ),
+      from,
+      to
+    )
+    expect(events.map((item) => item.title)).toEqual(['Count', 'Until', 'One-off'])
+  })
+
+  it('keeps the next repeats when one is moved past the window, and finds one moved into it', () => {
+    const events = parseCalendar(
+      wrap(
+        ...event('UID:daily', 'DTSTART:20261101T150000Z', 'DTEND:20261101T160000Z', 'RRULE:FREQ=DAILY', 'SUMMARY:Daily'),
+        ...event('UID:daily', 'RECURRENCE-ID:20261123T150000Z', 'DTSTART:20261201T150000Z', 'DTEND:20261201T160000Z', 'SUMMARY:Daily (moved out)'),
+        ...event('UID:weekly', 'DTSTART:20261101T150000Z', 'DTEND:20261101T160000Z', 'RRULE:FREQ=WEEKLY', 'SUMMARY:Weekly'),
+        ...event('UID:weekly', 'RECURRENCE-ID:20261129T150000Z', 'DTSTART:20261124T090000Z', 'DTEND:20261124T100000Z', 'SUMMARY:Weekly (moved in)')
+      ),
+      from,
+      to
+    )
+    expect(events.map((item) => `${item.title} ${new Date(item.start).toISOString()}`)).toEqual([
+      'Weekly (moved in) 2026-11-24T09:00:00.000Z',
+      'Daily 2026-11-24T15:00:00.000Z'
+    ])
+  })
+
+  it('converts a time zone the feed names but does not define (Outlook, or IANA without VTIMEZONE)', () => {
+    for (const tzid of ['Tokyo Standard Time', 'Asia/Tokyo', '/mozilla.org/20050126_1/Asia/Tokyo']) {
+      const [only] = parseCalendar(wrap(...event('UID:tz', `DTSTART;TZID=${tzid}:20261124T150000`, `DTEND;TZID=${tzid}:20261124T160000`, 'SUMMARY:Tokyo')), from, to)
+      expect(only?.start).toBe(day('2026-11-24T06:00:00Z'))
+      expect(only?.end).toBe(day('2026-11-24T07:00:00Z'))
+    }
+    // Repeats too, and across a daylight-saving change (New York: EDT until 1 Nov, then EST).
+    const repeats = parseCalendar(
+      wrap(...event('UID:ny', 'DTSTART;TZID=Eastern Standard Time:20261030T100000', 'DTEND;TZID=Eastern Standard Time:20261030T103000', 'RRULE:FREQ=DAILY;COUNT=4', 'SUMMARY:NY')),
+      day('2026-10-30T00:00:00Z'),
+      day('2026-11-03T00:00:00Z')
+    )
+    expect(repeats.map((item) => new Date(item.start).toISOString())).toEqual([
+      '2026-10-30T14:00:00.000Z',
+      '2026-10-31T14:00:00.000Z',
+      '2026-11-01T15:00:00.000Z',
+      '2026-11-02T15:00:00.000Z'
+    ])
+  })
+
+  it('skips a broken event instead of failing the whole calendar, and keeps events sharing or missing a UID', () => {
+    const events = parseCalendar(
+      wrap(
+        ...event('UID:broken', 'RRULE:FREQ=DAILY', 'SUMMARY:No start'),
+        ...event('UID:dup', 'DTSTART:20261123T150000Z', 'DTEND:20261123T160000Z', 'SUMMARY:First'),
+        ...event('UID:dup', 'DTSTART:20261124T150000Z', 'DTEND:20261124T160000Z', 'SUMMARY:Second'),
+        ...event('UID:dup', 'DTSTART:20261124T150000Z', 'DTEND:20261124T160000Z', 'SUMMARY:Second'),
+        ...event('DTSTART:20261124T170000Z', 'DTEND:20261124T180000Z', 'SUMMARY:No UID a'),
+        ...event('DTSTART:20261124T170000Z', 'DTEND:20261124T180000Z', 'SUMMARY:No UID b')
+      ),
+      from,
+      to
+    )
+    expect(events.map((item) => item.title)).toEqual(['First', 'Second', 'No UID a', 'No UID b'])
+  })
+
+  it('rejects something that is not a calendar with a readable message', () => {
+    expect(() => parseCalendar('<html><body>BEGIN:VCALENDAR</body></html>', from, to)).toThrow(/not a valid iCalendar/)
+    expect(() => parseCalendar('BEGIN:VCALENDAR\r\nnonsense\r\nEND:VCALENDAR', from, to)).toThrow(/not a valid iCalendar/)
+  })
+
+  it('keeps all-day events at local midnight', () => {
+    const [allDay] = parseCalendar(wrap(...event('UID:ad', 'DTSTART;VALUE=DATE:20261124', 'SUMMARY:Holiday')), from, to)
+    expect(allDay?.allDay).toBe(true)
+    expect(allDay?.start).toBe(new Date(2026, 10, 24).getTime())
+    expect(allDay?.end).toBe(new Date(2026, 10, 25).getTime())
+  })
+})
+
+describe('normalizeCalendarUrl', () => {
+  it('never repeats the address in its error (Electron logs failing IPC handlers)', () => {
+    const attempt = (input: string): unknown => {
+      try {
+        normalizeCalendarUrl(input)
+        return null
+      } catch (error) {
+        return error
+      }
+    }
+    for (const input of ['calendar.google.com/calendar/ical/me/private-SECRET123/basic.ics', 'http://x/private-SECRET123', 'javascript:alert(1)//SECRET123']) {
+      const error = attempt(input)
+      expect(error).toBeInstanceOf(Error)
+      expect(JSON.stringify(error)).not.toContain('SECRET123')
+      expect(String(error)).not.toContain('SECRET123')
+      expect(Object.values(error as object).join(' ')).not.toContain('SECRET123')
+    }
+  })
+})

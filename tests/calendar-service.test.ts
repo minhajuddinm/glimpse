@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildPrompt } from '../src/main/answers/prompt'
 import { inviteText } from '../src/main/calendar/ics'
-import { BRIEF_LEAD_MS, CalendarService, OVERRUN_MS } from '../src/main/calendar/service'
+import { BRIEF_LEAD_MS, CalendarService, fetchFeed, OVERRUN_MS } from '../src/main/calendar/service'
 import type { CalendarEvent, CalendarStatus } from '../src/shared/calendar'
 
 const T0 = Date.parse('2026-11-23T18:50:00Z')
@@ -23,22 +23,26 @@ function feed(events: readonly { uid: string; start: number; end: number; title:
 
 function setup(ics: string | Error, options: { brief?: boolean; auto?: boolean; url?: string | null } = {}) {
   let now = T0
-  let active = false
+  let active: number | null = null
+  let nextId = 1
+  let url = options.url === undefined ? 'https://calendar.example/private.ics' : options.url
   let text: string | Error = ics
+  let fetchText: (address: string) => Promise<string> = () => (text instanceof Error ? Promise.reject(text) : Promise.resolve(text))
   const log: string[] = []
   const statuses: CalendarStatus[] = []
   const service = new CalendarService({
-    url: () => (options.url === undefined ? 'https://calendar.example/private.ics' : options.url),
-    fetchText: () => (text instanceof Error ? Promise.reject(text) : Promise.resolve(text)),
+    url: () => url,
+    fetchText: (address) => fetchText(address),
     now: () => now,
     settings: () => ({ calendarBrief: options.brief ?? true, calendarAutoStart: options.auto ?? false }),
-    meetingActive: () => active,
+    activeMeeting: () => active,
     startMeeting: (title) => {
-      active = true
+      active = nextId++
       log.push(`start:${title}`)
+      return active
     },
     stopMeeting: () => {
-      active = false
+      active = null
       log.push('stop')
     },
     onBrief: (event) => log.push(`brief:${event.title}`),
@@ -53,11 +57,18 @@ function setup(ics: string | Error, options: { brief?: boolean; auto?: boolean; 
       now = ms
       service.tick()
     },
+    /** You start (true: a new meeting) or stop (false) a meeting by hand. */
     setActive: (value: boolean) => {
-      active = value
+      active = value ? nextId++ : null
     },
     setFeed: (value: string | Error) => {
       text = value
+    },
+    setUrl: (value: string | null) => {
+      url = value
+    },
+    setFetch: (fetcher: (address: string) => Promise<string>) => {
+      fetchText = fetcher
     }
   }
 }
@@ -181,5 +192,85 @@ describe('meeting brief prompt', () => {
     expect(prompt.user).toContain('<meeting>')
     expect(prompt.user).not.toContain('unrelated chatter')
     expect(prompt.system).toContain('At most 90 words')
+  })
+})
+
+describe('CalendarService: changes and hand-overs', () => {
+  it('does not keep showing the old calendar after the address changes and the new one fails', async () => {
+    const { service, setUrl, setFeed } = setup(feed([CALL]))
+    await service.refresh()
+    expect(service.status().events).toHaveLength(1)
+    setUrl('https://calendar.example/other.ics')
+    setFeed(new Error('The calendar address was not found.'))
+    await service.refresh()
+    expect(service.status()).toMatchObject({ state: 'error', events: [], lastSyncAt: null })
+  })
+
+  it('downloads again when the address changes during a sync, and disconnecting mid-sync stays disconnected', async () => {
+    const changed = setup(feed([CALL]))
+    let release: (text: string) => void = () => undefined
+    changed.setFetch((address) => (address.endsWith('private.ics') ? new Promise((resolve) => (release = resolve)) : Promise.resolve(feed([FOCUS]))))
+    const first = changed.service.refresh()
+    changed.setUrl('https://calendar.example/new.ics')
+    const second = changed.service.refresh() // What calendar:set-url awaits.
+    release(feed([CALL]))
+    await Promise.all([first, second])
+    expect(changed.service.status().events.map((event) => event.title)).toEqual(['Focus time'])
+
+    const removed = setup(feed([CALL]))
+    removed.setFetch(() => new Promise((resolve) => (release = resolve)))
+    const pending = removed.service.refresh()
+    removed.setUrl(null)
+    const disconnect = removed.service.refresh()
+    release(feed([CALL]))
+    await Promise.all([pending, disconnect])
+    expect(removed.service.status()).toMatchObject({ connected: false, state: 'off', events: [] })
+    removed.at(CALL.start - 60_000)
+    expect(removed.log).toEqual([])
+  })
+
+  it('does not restart a meeting you recorded yourself and then stopped', async () => {
+    const { service, log, at, setActive } = setup(feed([CALL]), { brief: false, auto: true })
+    await service.refresh()
+    setActive(true) // Record pressed a few minutes early.
+    at(CALL.start - 30_000)
+    setActive(false) // ...and stopped.
+    at(CALL.start + 60_000)
+    expect(log).toEqual([])
+  })
+
+  it('never stops a meeting you started after stopping the automatic one', async () => {
+    const { service, log, at, setActive } = setup(feed([CALL]), { brief: false, auto: true })
+    await service.refresh()
+    at(CALL.start)
+    setActive(false) // You stop Glimpse's recording...
+    setActive(true) // ...and start your own before the next tick.
+    at(CALL.start + 30_000)
+    at(CALL.end + OVERRUN_MS)
+    expect(log.filter((entry) => entry === 'stop')).toEqual([])
+  })
+
+  it('hands over from one automatic recording to the next back-to-back meeting', async () => {
+    const next = { uid: 'next', start: CALL.end, end: CALL.end + 30 * 60_000, title: 'Board review', link: true }
+    const { service, log, at } = setup(feed([CALL, next]), { brief: false, auto: true })
+    await service.refresh()
+    at(CALL.start)
+    at(next.start - 30_000) // The first meeting is still on: keep recording it.
+    expect(log.filter((entry) => entry.startsWith('start') || entry === 'stop')).toEqual(['start:Acme pricing call'])
+    at(next.start)
+    expect(log.filter((entry) => entry.startsWith('start') || entry === 'stop')).toEqual(['start:Acme pricing call', 'stop', 'start:Board review'])
+  })
+})
+
+describe('fetchFeed', () => {
+  it('never puts the address in its error messages', async () => {
+    const secret = 'https://127.0.0.1:1/calendar/ical/me/private-SECRET123/basic.ics'
+    const error = await fetchFeed(secret).then(
+      () => null,
+      (caught: unknown) => caught
+    )
+    expect(error).toBeInstanceOf(Error)
+    expect(String(error)).not.toContain('SECRET123')
+    expect(String(error)).toMatch(/calendar server/)
   })
 })

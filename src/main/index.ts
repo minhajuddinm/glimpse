@@ -212,10 +212,11 @@ async function startNormal(): Promise<void> {
     fetchText: fetchFeed,
     now: () => Date.now(),
     settings: () => settings.get(),
-    meetingActive: () => meetings.active,
+    activeMeeting: () => meetings.activeMeetingId,
     startMeeting: (title) => {
       meetings.start(title)
       pipeline.sync()
+      return meetings.activeMeetingId
     },
     stopMeeting: () => {
       meetings.stop()

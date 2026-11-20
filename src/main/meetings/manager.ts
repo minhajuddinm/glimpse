@@ -61,6 +61,11 @@ export class MeetingManager {
     return this.activeId !== null
   }
 
+  /** The meeting being recorded, or null. */
+  get activeMeetingId(): number | null {
+    return this.activeId
+  }
+
   state(): MeetingState {
     return {
       active: this.activeId === null ? null : this.options.store.summary(this.activeId),

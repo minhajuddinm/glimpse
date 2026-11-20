@@ -1,4 +1,4 @@
-import { ipcEvents, type EventChannel, type EventPayload } from '../../shared/ipc'
+import { invokeErrorMessage, ipcEvents, type EventChannel, type EventPayload } from '../../shared/ipc'
 
 /** Subscribes to a main → renderer event, dropping any payload that fails validation. */
 export function subscribe<E extends EventChannel>(
@@ -12,5 +12,5 @@ export function subscribe<E extends EventChannel>(
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  return invokeErrorMessage(error)
 }

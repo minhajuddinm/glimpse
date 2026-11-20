@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EVENT_CHANNELS, INVOKE_CHANNELS } from '../src/shared/channels'
-import { ipcContract, ipcEvents } from '../src/shared/ipc'
+import { invokeErrorMessage, ipcContract, ipcEvents } from '../src/shared/ipc'
 
 describe('IPC contract', () => {
   it('preload invoke allow-list matches the contract exactly', () => {
@@ -33,5 +33,16 @@ describe('IPC contract', () => {
   it('no-argument channels accept only null', () => {
     expect(ipcContract['app:info'].request.safeParse(null).success).toBe(true)
     expect(ipcContract['app:info'].request.safeParse({}).success).toBe(false)
+  })
+})
+
+describe('invokeErrorMessage', () => {
+  it("shows the handler's own message, without Electron's wrapper", () => {
+    expect(invokeErrorMessage(new Error("Error invoking remote method 'calendar:set-url': Error: Use the https:// (or webcal://) address of the calendar."))).toBe(
+      'Use the https:// (or webcal://) address of the calendar.'
+    )
+    expect(invokeErrorMessage(new Error("Error invoking remote method 'x:y': TypeError: bad"))).toBe('bad')
+    expect(invokeErrorMessage(new Error('plain'))).toBe('plain')
+    expect(invokeErrorMessage('text')).toBe('text')
   })
 })

@@ -151,7 +151,7 @@ export function CalendarCard({ meeting }: { meeting: MeetingState }) {
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-xs text-text-faint">
             <span className={`min-w-0 flex-1 ${status.state === 'error' ? 'text-amber-300' : ''}`}>
-              {status.message}
+              {status.lastSyncAt !== null ? status.message.replace(/\.$/, '') : status.message}
               {status.lastSyncAt !== null && ` · synced ${time(status.lastSyncAt)}`}
             </span>
             <Button tone="subtle" size="sm" icon={RefreshCw} disabled={busy || status.state === 'syncing'} onClick={() => void window.glimpse.invoke('calendar:refresh', null).then(setStatus)}>
@@ -162,7 +162,8 @@ export function CalendarCard({ meeting }: { meeting: MeetingState }) {
             </Button>
           </div>
           {status.events.length === 0 ? (
-            <EmptyState icon={CalendarX2} title="Nothing in the next 24 hours" />
+            // Before a first good sync (an error, or still syncing) there is nothing to say yet.
+            status.state === 'ok' && <EmptyState icon={CalendarX2} title="Nothing in the next 24 hours" />
           ) : (
             <div className="space-y-1.5">
               {status.events.map((event) => (

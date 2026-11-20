@@ -158,3 +158,9 @@ export type IpcResponse<C extends InvokeChannel> = z.output<IpcContract[C]['resp
 
 export type EventChannel = keyof typeof ipcEvents
 export type EventPayload<E extends EventChannel> = z.output<(typeof ipcEvents)[E]>
+
+/** The message a main-process handler threw, without Electron's "Error invoking remote method '…': Error:" wrapper. */
+export function invokeErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.replace(/^Error invoking remote method '[^']*': (?:[A-Za-z]*Error: )?/, '')
+}
