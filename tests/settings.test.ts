@@ -14,6 +14,17 @@ describe('mergeStoredSettings', () => {
   it('ignores unknown keys', () => {
     expect(mergeStoredSettings({ legacyFlag: true })).toEqual(DEFAULT_SETTINGS)
   })
+
+  it('loads settings saved before meetings, keeping custom hotkeys', () => {
+    const merged = mergeStoredSettings({
+      mode: 'sales',
+      hotkeys: { toggleOverlay: 'Ctrl+Shift+O', toggleClickThrough: 'Ctrl+Alt+C', panicHide: 'Ctrl+Alt+H' }
+    })
+    expect(merged.listenMode).toBe('always')
+    expect(merged.saveMinutesToNotes).toBe(true)
+    expect(merged.hotkeys.toggleOverlay).toBe('Ctrl+Shift+O')
+    expect(merged.hotkeys.toggleMeeting).toBe(DEFAULT_SETTINGS.hotkeys.toggleMeeting)
+  })
 })
 
 describe('applySettingsPatch', () => {

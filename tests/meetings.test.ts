@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { openDatabase } from '../src/main/db'
 import type { LlmCall, LlmProvider } from '../src/main/answers/llm'
 import { MeetingManager, MIN_WORDS_FOR_MINUTES, type MeetingFiles } from '../src/main/meetings/manager'
-import { cleanMinutes, formatTranscript, minutesFileName, splitTranscript } from '../src/main/meetings/minutes'
+import { cleanMinutes, formatTranscript, freeFileName, minutesFileName, splitTranscript } from '../src/main/meetings/minutes'
 import { MeetingStore, minutesPreview } from '../src/main/meetings/store'
 import { defaultMeetingTitle, formatDuration } from '../src/shared/meetings'
 import type { Segment, Source } from '../src/shared/transcript'
@@ -47,9 +47,8 @@ function memoryFiles(): MeetingFiles & { saved: Map<string, string> } {
   }
 }
 
-function setup(provider: LlmProvider | null = fakeProvider('anthropic')) {
+function setup(provider: LlmProvider | null = fakeProvider('anthropic'), files = memoryFiles()) {
   const store = new MeetingStore(openDatabase(':memory:'))
-  const files = memoryFiles()
   let clock = Date.UTC(2026, 10, 20, 14, 5)
   const manager = new MeetingManager({
     store,
@@ -230,5 +229,130 @@ describe('MeetingManager', () => {
     const { manager } = setup()
     const id = manager.start().active?.id ?? -1
     await expect(manager.delete(id)).rejects.toThrow(/Stop/)
+  })
+
+  it('keeps the earlier minutes when a rewrite fails, and shows why', async () => {
+    let fail = false
+    const provider = fakeProvider('anthropic', () => {
+      if (fail) throw new Error('overloaded')
+      return MINUTES
+    })
+    const { manager, store, say } = setup(provider)
+    const id = manager.start().active?.id ?? -1
+    say('them', LONG_LINE)
+    manager.stop()
+    await settle(manager, id)
+    fail = true
+    await manager.summarize(id)
+    const detail = store.detail(id)
+    expect(detail?.status).toBe('done')
+    expect(detail?.minutes).toBe(MINUTES)
+    expect(detail?.error).toMatch(/overloaded/)
+    fail = false
+    await manager.summarize(id)
+    expect(store.detail(id)?.error).toBeNull()
+  })
+
+  it('gives two meetings with one title in the same minute their own notes files', async () => {
+    const { manager, store, files, say } = setup()
+    const first = manager.start('Standup').active?.id ?? -1
+    say('them', LONG_LINE)
+    manager.stop()
+    await settle(manager, first)
+    const second = manager.start('Standup').active?.id ?? -1
+    say('them', LONG_LINE)
+    manager.stop()
+    await settle(manager, second)
+    // Rewriting the first must not take over the second's file.
+    await manager.summarize(first)
+    const a = store.detail(first)?.file ?? ''
+    const b = store.detail(second)?.file ?? ''
+    expect(a).not.toBe(b)
+    expect(files.saved.size).toBe(2)
+    await manager.delete(first)
+    expect(files.saved.has(b)).toBe(true)
+  })
+
+  it('renames the notes file with the meeting', async () => {
+    const { manager, store, files, say } = setup()
+    const id = manager.start('Old name').active?.id ?? -1
+    say('them', LONG_LINE)
+    manager.stop()
+    await settle(manager, id)
+    manager.rename(id, 'New name')
+    manager.rename(id, 'Newer name')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const file = store.detail(id)?.file ?? ''
+    expect(file).toMatch(/Newer name\.md$/)
+    expect([...files.saved.keys()]).toEqual([file])
+    expect(files.saved.get(file)).toContain('# Newer name')
+  })
+
+  it('does not leave a file behind when the meeting is deleted while its file is being written', async () => {
+    const files = memoryFiles()
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const plain = memoryFiles()
+    let writing = false
+    files.write = async (name, contents) => {
+      writing = true
+      await gate
+      const path = await plain.write(name, contents)
+      if (path !== null) files.saved.set(path, contents)
+      return path
+    }
+    const { manager, store, say } = setup(fakeProvider('anthropic'), files)
+    const id = manager.start('Racing').active?.id ?? -1
+    say('them', LONG_LINE)
+    say('you', LONG_LINE)
+    manager.stop()
+    await vi.waitFor(() => {
+      expect(writing).toBe(true)
+    })
+    await manager.delete(id)
+    release()
+    await settle(manager, id)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(store.detail(id)).toBeNull()
+    expect(files.saved.size).toBe(0)
+  })
+
+  it('leaves an earlier notes file alone when saving to notes is turned off', async () => {
+    const files = memoryFiles()
+    const { manager, store, say } = setup(fakeProvider('anthropic'), files)
+    const id = manager.start('Kept').active?.id ?? -1
+    say('them', LONG_LINE)
+    manager.stop()
+    await settle(manager, id)
+    const file = store.detail(id)?.file ?? ''
+    files.write = () => Promise.resolve(null)
+    await manager.summarize(id)
+    expect(files.saved.has(file)).toBe(true)
+    expect(store.detail(id)?.file).toBe(file)
+  })
+
+  it('keeps the real end time and earlier minutes of a meeting whose minutes were cut short by a quit', async () => {
+    const { manager, store, say, tick } = setup()
+    const id = manager.start('Ended').active?.id ?? -1
+    say('them', LONG_LINE)
+    tick(60_000)
+    manager.stop()
+    await settle(manager, id)
+    const ended = store.detail(id)?.endedAt
+    // A rewrite was running when Glimpse quit.
+    store.setStatus(id, 'summarizing')
+    store.recoverInterrupted(Date.now())
+    expect(store.detail(id)?.endedAt).toBe(ended)
+    expect(store.detail(id)?.status).toBe('done')
+  })
+})
+
+describe('notes file names', () => {
+  it('numbers a name another meeting already uses, ignoring case', () => {
+    expect(freeFileName('2026-11-20 1405 Standup.md', [])).toBe('2026-11-20 1405 Standup.md')
+    expect(freeFileName('2026-11-20 1405 Standup.md', ['C:\\Notes\\Meetings\\2026-11-20 1405 STANDUP.md'])).toBe('2026-11-20 1405 Standup (2).md')
+    expect(freeFileName('a.md', ['/n/a.md', '/n/a (2).md'])).toBe('a (3).md')
   })
 })

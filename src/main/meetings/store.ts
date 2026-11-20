@@ -98,15 +98,29 @@ export class MeetingStore {
     this.db.prepare('DELETE FROM meetings WHERE id = ?').run(meetingId)
   }
 
-  /** Meetings left "recording" by a crash or a forced quit become "interrupted"; returns how many. */
+  /** Meetings left "recording" (or "summarizing") by a crash or a forced quit become "interrupted"; returns how many. */
   recoverInterrupted(now: number): number {
-    const rows = z.array(z.object({ id: z.number().int(), last: z.number().nullable() })).parse(
-      this.db
-        .prepare("SELECT m.id, (SELECT MAX(at) FROM meeting_lines l WHERE l.meeting_id = m.id) AS last FROM meetings m WHERE m.status IN ('recording', 'summarizing')")
-        .all()
-    )
-    for (const row of rows) this.end(row.id, row.last ?? now, 'interrupted')
+    const rows = z
+      .array(z.object({ id: z.number().int(), ended: z.number().nullable(), last: z.number().nullable(), minutes: z.number().int() }))
+      .parse(
+        this.db
+          .prepare(
+            `SELECT m.id, m.ended_at AS ended, (SELECT MAX(at) FROM meeting_lines l WHERE l.meeting_id = m.id) AS last,
+              (m.minutes IS NOT NULL) AS minutes FROM meetings m WHERE m.status IN ('recording', 'summarizing')`
+          )
+          .all()
+      )
+    // A meeting that was already writing its minutes keeps its real end time, and a rewrite cut short keeps the earlier minutes.
+    for (const row of rows) this.end(row.id, row.ended ?? row.last ?? now, row.minutes === 1 ? 'done' : 'interrupted')
     return rows.length
+  }
+
+  /** Notes files saved for every meeting except `meetingId`. */
+  otherFiles(meetingId: number): string[] {
+    return z
+      .array(z.object({ file: z.string() }))
+      .parse(this.db.prepare('SELECT file FROM meetings WHERE file IS NOT NULL AND id != ?').all(meetingId))
+      .map((row) => row.file)
   }
 
   list(limit = 200): MeetingSummary[] {

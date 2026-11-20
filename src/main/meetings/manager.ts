@@ -5,6 +5,7 @@ import type { LlmProvider } from '../answers/llm'
 import {
   cleanMinutes,
   formatTranscript,
+  freeFileName,
   mergeUserPrompt,
   minutesFile,
   minutesFileName,
@@ -46,6 +47,8 @@ export class MeetingManager {
   private activeId: number | null = null
   /** Minutes being written, by meeting id; a second request joins the one in flight. */
   private readonly summarizing = new Map<number, Promise<void>>()
+  /** Notes-file writes run one at a time, so two saves of one meeting never leave a stray file. */
+  private fileWrites: Promise<void> = Promise.resolve()
 
   constructor(private readonly options: MeetingManagerOptions) {}
 
@@ -114,6 +117,9 @@ export class MeetingManager {
     if (name === '') throw new Error('A meeting needs a title.')
     this.options.store.rename(id, name)
     this.emit()
+    // Keep the notes file's name and heading in step (a running minutes job saves it when it finishes).
+    const detail = this.options.store.detail(id)
+    if (detail?.file !== null && detail?.file !== undefined && detail.minutes !== null && !this.summarizing.has(id)) void this.saveFile(id)
   }
 
   async delete(id: number): Promise<void> {
@@ -141,8 +147,10 @@ export class MeetingManager {
     const detail = this.options.store.detail(id)
     if (detail === null) return
     const provider = this.options.provider()
+    // A failed rewrite keeps the earlier minutes ("done"), with the error shown beside them.
+    const failed = detail.minutes === null ? 'error' : 'done'
     if (provider === null) {
-      this.options.store.setStatus(id, 'error', 'Add an Anthropic or Groq key in Answers to write minutes. The transcript is saved.')
+      this.options.store.setStatus(id, failed, 'Add an Anthropic or Groq key in Answers to write minutes. The transcript is saved.')
       this.emit()
       return
     }
@@ -173,17 +181,31 @@ export class MeetingManager {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.error(`[meetings] minutes for ${String(id)} failed:`, message)
-      this.options.store.setStatus(id, 'error', `Could not write the minutes: ${message}`)
+      this.options.store.setStatus(id, failed, `Could not write the minutes: ${message}`)
     }
   }
 
   /** Writes the minutes into the notes folder, replacing the previous file for this meeting. */
-  private async saveFile(id: number): Promise<void> {
+  private saveFile(id: number): Promise<void> {
+    const next = this.fileWrites.then(() => this.writeFile(id))
+    this.fileWrites = next
+    return next
+  }
+
+  private async writeFile(id: number): Promise<void> {
     const detail = this.options.store.detail(id)
     if (detail?.minutes === null || detail?.minutes === undefined) return
     try {
       const contents = minutesFile(detail.title, detail.startedAt, detail.endedAt, detail.minutes)
-      const path = await this.options.files.write(minutesFileName(detail.title, detail.startedAt), contents)
+      const name = freeFileName(minutesFileName(detail.title, detail.startedAt), this.options.store.otherFiles(id))
+      const path = await this.options.files.write(name, contents)
+      // Saving is off: leave any file written earlier alone (deleting the meeting still removes it).
+      if (path === null) return
+      if (this.options.store.summary(id) === null) {
+        // Deleted while the file was being written.
+        await this.options.files.remove(path).catch(() => undefined)
+        return
+      }
       if (detail.file !== null && detail.file !== path) await this.options.files.remove(detail.file).catch(() => undefined)
       this.options.store.setFile(id, path)
     } catch (error) {

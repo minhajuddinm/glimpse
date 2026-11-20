@@ -127,6 +127,18 @@ export function minutesFileName(title: string, startedAt: number): string {
   return `${stamp} ${safe === '' ? 'Meeting' : safe}.md`
 }
 
+/**
+ * `fileName`, or "… (2).md", "… (3).md" when another meeting's file already has that name
+ * (two meetings with one title in the same minute). Compared without case, like Windows and macOS.
+ */
+export function freeFileName(fileName: string, otherFiles: readonly string[]): string {
+  const taken = new Set(otherFiles.map((path) => (path.split(/[\\/]/).pop() ?? path).toLowerCase()))
+  const stem = fileName.replace(/\.md$/, '')
+  let name = fileName
+  for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${stem} (${String(n)}).md`
+  return name
+}
+
 /** Full export: minutes plus the transcript. */
 export function exportMarkdown(title: string, startedAt: number, endedAt: number | null, minutes: string | null, lines: readonly MeetingLine[]): string {
   const head = minutesFile(title, startedAt, endedAt, minutes ?? '_No minutes yet._').trimEnd()

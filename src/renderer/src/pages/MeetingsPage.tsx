@@ -224,6 +224,9 @@ function DetailView({ id, onBack, onError }: { id: number; onBack: () => void; o
   const copy = (what: 'minutes' | 'transcript', text: string): void => {
     void navigator.clipboard.writeText(text).then(() => {
       setCopied(what)
+      setTimeout(() => {
+        setCopied((current) => (current === what ? null : current))
+      }, 2000)
     })
   }
   const status = STATUS[detail.status]
@@ -318,7 +321,14 @@ function DetailView({ id, onBack, onError }: { id: number; onBack: () => void; o
             <p className="pt-1 text-xs text-text-faint">Writing the minutes — usually 10–30 seconds.</p>
           </div>
         ) : detail.minutes !== null ? (
-          <MinutesView markdown={detail.minutes} />
+          <>
+            {detail.error !== null && (
+              <div className="mb-3">
+                <Notice tone="warn">{`${detail.error} The earlier minutes are kept below.`}</Notice>
+              </div>
+            )}
+            <MinutesView markdown={detail.minutes} />
+          </>
         ) : (
           <Notice tone="warn">{detail.error ?? 'No minutes yet. Use “Write minutes” above.'}</Notice>
         )}

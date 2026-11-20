@@ -91,6 +91,10 @@ class SourceCapture {
         this.lost(new Error('The device stopped (unplugged or disabled).'))
       })
       const { context: ctx, sink: out } = await audioContext()
+      if (generation !== this.generation) {
+        for (const track of stream.getTracks()) track.stop()
+        return
+      }
       const input = ctx.createMediaStreamSource(stream)
       const tap = new AudioWorkletNode(ctx, 'pcm-tap', { processorOptions: { chunk: CHUNK } })
       tap.port.onmessage = (event: MessageEvent<Float32Array>) => {
@@ -207,6 +211,8 @@ async function apply(next: CaptureControl): Promise<void> {
   }
   if (!next.loopbackEnabled) loopback.stop('muted', 'Muted.')
   else if (!loopback.live || retry) await loopback.start()
+  // A newer control (a pause, or a meeting stopped straight after it started) arrived meanwhile: it decides.
+  if (control !== next) return
 
   if (!next.micEnabled) microphone.stop('muted', 'Muted.')
   else if (!microphone.live || micChanged || retry) await microphone.start()

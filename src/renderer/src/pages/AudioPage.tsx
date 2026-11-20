@@ -12,7 +12,7 @@ const STATE_TONE: Record<CaptureState, 'good' | 'bad' | 'warn' | 'neutral'> = {
   off: 'neutral',
   muted: 'neutral',
   retrying: 'warn',
-  paused: 'bad',
+  paused: 'warn',
   error: 'bad'
 }
 
