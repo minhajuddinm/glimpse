@@ -55,7 +55,7 @@ Glimpse runs in the system tray (the menu bar on macOS). Click its icon to open 
 
 - A frameless, transparent, always-on-top panel on the right of the primary display. It is never focusable, so showing or hiding it does not take focus from the app you are typing in.
 - **Hidden from capture.** Glimpse asks Windows to exclude the window (`WDA_EXCLUDEFROMCAPTURE`), sets that before the window is shown, then reads the setting back from Windows and **hides the overlay again if Windows says it is capturable**. On Windows 10 before version 2004, where only `WDA_MONITOR` exists, it falls back to a faint "capture-safe" overlay.
-- **Click-through.** By default clicks pass through the panel to the app behind it. Only the header stays clickable, using a hit-box checked every 60 ms. Toggle with the hotkey or the Lock/Unlock button.
+- **Click-through.** By default clicks pass through the panel to the app behind it. Only the Lock/Unlock button stays clickable (a hit-box checked every 60 ms), so even the header lets clicks reach, say, the close button of a window behind it. Toggle with the hotkey or the Lock/Unlock button.
 - **Panic hide.** One key hides the overlay and the tray icon and mutes capture. The same key brings everything back.
 
 ### Hotkeys (rebindable in Settings → Hotkeys)
@@ -96,21 +96,20 @@ The self-test result (verdict and per-region numbers) is saved. The diff images 
 
 ### Capture matrix (Windows)
 
-"PASS" means the overlay was absent from the shared or recorded image. Rows marked *automated* were verified by Glimpse's own tests on Windows 11 build 26300; the rest need a person with the app and are not yet tested.
+"PASS" means the overlay was absent from the shared or recorded image. Rows marked *automated* were verified by Glimpse's own tests on Windows 11 build 26300; the others were checked by hand on the same PC, by sharing or recording with the overlay showing.
 
 | Tool | Result | Notes |
 |---|---|---|
 | Electron `desktopCapturer` (same path browsers and Electron-based recorders use) | PASS | Automated self-test, 0 overlay pixels, control saw 100% |
 | GDI `CopyFromScreen` (classic screenshot / BitBlt path) | PASS | Automated, separate process: 0 of 282,240 overlay-region pixels; a normal magenta window in the same shot was 20,000 of 20,000 |
-| Zoom screen share | — | Not tested |
-| Google Meet (Chrome) share | — | Not tested |
-| Microsoft Teams share | — | Not tested |
-| OBS Display Capture | — | Not tested |
-| OBS Window Capture (WGC) | — | Not tested |
-| Snipping Tool / Win+Shift+S | — | Not tested |
-| Xbox Game Bar recording | — | Not tested |
-| Loom | — | Not tested |
-| Discord screen share | — | Not tested |
+| Zoom screen share | PASS | Manual test, 2026-11-20 |
+| Google Meet share | PASS | Manual test, 2026-11-20 |
+| Microsoft Teams share | PASS | Manual test, 2026-11-20 |
+| OBS Studio | PASS | Manual test, 2026-11-20; capture mode not noted (Display and Window Capture each still worth a check) |
+| Snipping Tool / Win+Shift+S | PASS | Manual test, 2026-11-20 |
+| Xbox Game Bar recording | PASS | Manual test, 2026-11-20 |
+| Loom | PASS | Manual test, 2026-11-20 |
+| Discord screen share | PASS | Manual test, 2026-11-20 |
 
 Windows 10 before 2004 (`WDA_MONITOR` capture-safe mode) is implemented but has not been tested.
 
@@ -182,7 +181,7 @@ Turn it on in **Settings → Companion**, then scan the QR code. It shows the li
 | Milestone | What it delivers | Status |
 |---|---|---|
 | M0 | Electron + React + TypeScript strict, Zod-validated IPC, SQLite settings, tray | ✅ |
-| A | Capture-invisible overlay, click-through, panic hide, hotkeys, capture self-test and live test | ✅ (manual recorder tests pending) |
+| A | Capture-invisible overlay, click-through, panic hide, hotkeys, capture self-test and live test | ✅ (verified by hand in Zoom, Meet, Teams, OBS, Snipping Tool, Game Bar, Loom and Discord) |
 | B | Microphone + system audio, local streaming transcription, speaker labels, companion page | ✅ (real two-person recording pending) |
 | C | Question detection, live answers, modes, screenshot context, hotkeys | ✅ (G7 measured from the transcript line; spoken end-to-end pending) |
 | KB | Notes-folder search (Markdown/TXT/DOCX/PDF), instant prepared answers | ✅ (G11 5/5) |

@@ -16,7 +16,6 @@ import { SECURE_WEB_PREFERENCES, devRendererUrl, lockDownNavigation, rendererFil
 import { sleep } from './util'
 
 export const OVERLAY_WIDTH = 420
-const HEADER_HEIGHT = 56
 /** Time for the renderer paint and the desktop compositor to settle before a capture. */
 const SETTLE_MS = 160
 const CANARY_ACK_TIMEOUT_MS = 2000
@@ -56,7 +55,8 @@ export class OverlayController {
   /** Only the self-test control ever sets this to false, and only briefly. */
   private protectionWanted = true
   private protection: ProtectionStatus = INITIAL_PROTECTION
-  private hitRects: Rect[] = [{ x: 0, y: 0, width: OVERLAY_WIDTH, height: HEADER_HEIGHT }]
+  /** Set by the overlay page: just its Lock/Unlock button. Until it reports, nothing blocks clicks. */
+  private hitRects: Rect[] = []
   private canaryWaiter: ((on: boolean) => void) | null = null
   private readonly poller: ClickThroughPoller
 

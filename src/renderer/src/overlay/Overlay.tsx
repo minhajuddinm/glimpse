@@ -38,7 +38,7 @@ export function Overlay() {
   const [paint, setPaint] = useState<Paint>({ on: false, seq: 0 })
   const [answers, setAnswers] = useState<AnswersSnapshot>({ answers: [] })
   const [transcript, setTranscript] = useState<TranscriptSnapshot>({ segments: [], partials: { them: '', you: '' } })
-  const headerRef = useRef<HTMLDivElement>(null)
+  const lockRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     void window.glimpse.invoke('overlay:state', null).then(setState)
@@ -71,17 +71,18 @@ export function Overlay() {
     }
   }, [paint])
 
-  // The header is the only region that stays clickable while click-through is on.
+  // Only the Lock/Unlock button stays clickable while click-through is on: the rest of the
+  // overlay, header included, lets clicks reach the app behind it.
   useEffect(() => {
-    const header = headerRef.current
-    if (header === null) return
+    const button = lockRef.current
+    if (button === null) return
     const report = (): void => {
-      const { x, y, width, height } = header.getBoundingClientRect()
+      const { x, y, width, height } = button.getBoundingClientRect()
       void window.glimpse.invoke('overlay:hitRects', { rects: [{ x, y, width, height }] })
     }
     report()
     const observer = new ResizeObserver(report)
-    observer.observe(header)
+    observer.observe(button)
     return () => {
       observer.disconnect()
     }
@@ -102,7 +103,7 @@ export function Overlay() {
       <div className="relative flex h-full flex-col p-2.5">
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgb(20_18_36/0.92),rgb(10_10_20/0.9))] shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_20px_60px_-20px_rgb(0_0_0/0.8)] backdrop-blur-xl">
           <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-48 w-72 -translate-x-1/2 rounded-full bg-violet/20 blur-3xl" />
-          <div ref={headerRef} className="relative flex h-[56px] shrink-0 items-center gap-2.5 border-b border-white/[0.07] px-4">
+          <div className="relative flex h-[56px] shrink-0 items-center gap-2.5 border-b border-white/[0.07] px-4">
             <img src="./logo.png" alt="" className="h-6 w-6 rounded-md shadow-[0_0_14px_-2px_rgb(139_92_246/0.9)]" />
             <span className="bg-gradient-to-r from-violet-200 to-indigo-200 bg-clip-text text-[12px] font-semibold tracking-[0.16em] text-transparent">GLIMPSE</span>
             <span
@@ -113,6 +114,7 @@ export function Overlay() {
               {clickThrough ? 'CLICK-THROUGH' : 'INTERACTIVE'}
             </span>
             <button
+              ref={lockRef}
               type="button"
               title="Toggle click-through"
               className="ml-auto cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/80 transition hover:bg-white/10 active:scale-95"
