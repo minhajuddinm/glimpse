@@ -78,11 +78,20 @@ export function parseMicUsage(output: string): MicUse[] {
   return out
 }
 
+/** A Google Meet code, as in meet.google.com/abc-defg-hij. */
+const MEET_CODE = /\b[a-z]{3}-[a-z]{4}-[a-z]{3}\b/
+/** Teams pages that are not a call: "Chat | Microsoft Teams", "Calendar | Microsoft Teams"... */
+const TEAMS_PAGES = /^(Chat|Activity|Calendar|Files|Teams|Calls|Apps|Assignments|Communities|OneDrive|Copilot|Home|Search)\s*\|/i
+
 /** The call service a browser window title shows, if any. */
-export function callInTitle(title: string): string | null {
-  if (/^Meet\s*[-–—:]|Google Meet/i.test(title)) return 'Google Meet'
-  if (/Microsoft Teams/i.test(title) && !/^(Chat|Activity|Calendar|Files)\b/i.test(title)) return 'Teams'
-  if (/\bZoom\b/i.test(title) && /meeting|webinar|zoom\.us/i.test(title)) return 'Zoom'
+export function callInTitle(raw: string): string | null {
+  // An unread count in front, "(3) Chat | Microsoft Teams", is not part of the page name.
+  const title = raw.trim().replace(/^\(\d+\+?\)\s*/, '')
+  // A call tab is "Meet - abc-defg-hij" (also with an en dash); Meet's home page, "Google Meet", is not a call.
+  if (/^Meet\s*[-–—:]/i.test(title) || (/Google Meet/i.test(title) && MEET_CODE.test(title))) return 'Google Meet'
+  if (/Microsoft Teams/i.test(title) && !TEAMS_PAGES.test(title)) return 'Teams'
+  // Case matters: "Zoom Meeting" is the web client; "zoom lens meeting notes" is not.
+  if (/\bZoom (Meeting|Webinar)\b/.test(title) || /\bzoom\.us\b/i.test(title)) return 'Zoom'
   if (/\bWebex\b/i.test(title)) return 'Webex'
   if (/\bJitsi Meet\b/i.test(title)) return 'Jitsi'
   if (/\bWhereby\b/i.test(title)) return 'Whereby'
@@ -91,7 +100,13 @@ export function callInTitle(title: string): string | null {
 
 /** The call service of a calendar meeting link. */
 export function callOfLink(link: string): string {
-  const host = new URL(link).hostname
+  let host: string
+  try {
+    host = new URL(link).hostname.toLowerCase()
+  } catch {
+    // A link that is not a URL must not stop detection for the whole meeting.
+    return 'online'
+  }
   if (host.endsWith('meet.google.com')) return 'Google Meet'
   if (host.includes('zoom.us')) return 'Zoom'
   if (host.includes('teams.')) return 'Teams'
@@ -116,14 +131,25 @@ function csvRows(output: string): string[][] {
     .map((line) => line.slice(1, -1).split('","'))
 }
 
+/** The window title column of `tasklist /v`. */
+const TITLE_COLUMN = 8
+
+/**
+ * Window titles from `tasklist /v /fo csv /nh`. tasklist does not escape quotes, so a title
+ * containing `","` splits into extra columns: the title is everything from its column on.
+ */
+export function parseWindowTitles(output: string): string[] {
+  return csvRows(output)
+    .filter((row) => row.length > TITLE_COLUMN)
+    .map((row) => row.slice(TITLE_COLUMN).join('","').trim())
+    .filter((title) => title !== '' && title !== 'N/A')
+}
+
 /** The Windows side of detection: the mic record, running processes and browser window titles. */
 export const windowsProbes = {
   micUsage: async (): Promise<MicUse[]> => parseMicUsage(await run('reg.exe', ['query', MIC_KEY, '/s', '/v', 'LastUsedTimeStop'])),
   runningImages: async (): Promise<Set<string>> => new Set(csvRows(await run('tasklist.exe', ['/fo', 'csv', '/nh'])).map((row) => (row[0] ?? '').toLowerCase())),
-  windowTitles: async (image: string): Promise<string[]> =>
-    csvRows(await run('tasklist.exe', ['/v', '/fo', 'csv', '/nh', '/fi', `imagename eq ${image}`]))
-      .map((row) => row[row.length - 1] ?? '')
-      .filter((title) => title !== '' && title !== 'N/A')
+  windowTitles: async (image: string): Promise<string[]> => parseWindowTitles(await run('tasklist.exe', ['/v', '/fo', 'csv', '/nh', '/fi', `imagename eq ${image}`]))
 }
 
 export interface MeetingDetectorOptions {
@@ -152,6 +178,10 @@ export interface MeetingDetectorOptions {
 export class MeetingDetector {
   private timer: ReturnType<typeof setInterval> | null = null
   private polling = false
+  /** Set by stop(): a check still waiting on reg.exe or tasklist when Glimpse quits must not start or stop anything. */
+  private stopped = false
+  /** The last failure logged, so a broken probe is reported once rather than every 3 s. */
+  private lastError: string | null = null
   /** A call app first seen holding the mic, waiting out JOIN_CONFIRM_MS. */
   private candidate: { readonly key: string; readonly since: number } | null = null
   /** The recording Glimpse started for a call, so it stops that one (and only that one). */
@@ -166,12 +196,19 @@ export class MeetingDetector {
   constructor(private readonly options: MeetingDetectorOptions) {}
 
   start(): void {
+    this.stopped = false
     this.timer ??= setInterval(() => void this.poll(), POLL_MS)
   }
 
   stop(): void {
+    this.stopped = true
     if (this.timer !== null) clearInterval(this.timer)
     this.timer = null
+  }
+
+  /** A method, not the field, so TypeScript does not assume it is unchanged across an await. */
+  private isStopped(): boolean {
+    return this.stopped
   }
 
   /** One check. Public for tests; overlapping calls are skipped. */
@@ -180,8 +217,11 @@ export class MeetingDetector {
     this.polling = true
     try {
       await this.check()
+      this.lastError = null
     } catch (error) {
-      console.warn('[meetings] call detection failed:', error instanceof Error ? error.message : error)
+      const message = error instanceof Error ? error.message : String(error)
+      if (message !== this.lastError) console.warn('[meetings] call detection failed:', message)
+      this.lastError = message
     } finally {
       this.polling = false
     }
@@ -189,13 +229,15 @@ export class MeetingDetector {
 
   private async check(): Promise<void> {
     if (!this.options.enabled()) {
-      // Turning it off leaves a running recording alone, but Glimpse no longer stops it.
-      this.running = null
+      // Turning it off leaves a running recording alone and Glimpse no longer stops it. Turned
+      // back on during the call, Glimpse follows it again, with the stop grace counted from now.
+      if (this.running !== null) this.running.lastSeen = this.options.now()
       this.candidate = null
       return
     }
     const now = this.options.now()
     const inUse = new Set((await this.options.micUsage()).filter((use) => use.inUse).map((use) => use.key))
+    if (this.isStopped()) return
     for (const key of this.declined) if (!inUse.has(key)) this.declined.delete(key)
     for (const key of this.browsers.keys()) if (!inUse.has(key)) this.browsers.delete(key)
     for (const [key, at] of this.stale) if (!inUse.has(key) || now - at >= ALIVE_CHECK_MS) this.stale.delete(key)
@@ -239,8 +281,14 @@ export class MeetingDetector {
 
     const app = callAppOf(found.key)
     // A crash can leave Windows saying the mic is still open: only a running app counts.
-    if (app !== null && !app.browser && !(await this.isRunning(app))) {
+    if (app !== null && !(await this.isRunning(app))) {
       this.stale.set(found.key, now)
+      return
+    }
+    if (this.isStopped()) return
+    if (this.options.activeMeeting() !== null) {
+      // You started a meeting while Glimpse was looking at the call: it is yours, leave it alone.
+      this.declined.add(found.key)
       return
     }
 
@@ -264,15 +312,17 @@ export class MeetingDetector {
     if (inUse.has(running.key)) {
       running.lastSeen = now
       const app = callAppOf(running.key)
-      if (app !== null && !app.browser && now - running.aliveCheckedAt >= ALIVE_CHECK_MS) {
+      if (app !== null && now - running.aliveCheckedAt >= ALIVE_CHECK_MS) {
         running.aliveCheckedAt = now
         ended = !(await this.isRunning(app))
       }
     } else {
       ended = now - running.lastSeen >= STOP_GRACE_MS
     }
-    if (!ended) return
+    if (!ended || this.isStopped()) return
     this.running = null
+    // Checked again after the wait above: never stop a meeting you started in the meantime.
+    if (this.options.activeMeeting() !== running.meetingId) return
     this.options.stopMeeting()
     this.options.notify('Call ended', `Glimpse stopped recording your ${running.app} call and is writing the minutes.`)
   }

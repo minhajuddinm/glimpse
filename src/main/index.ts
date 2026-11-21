@@ -228,6 +228,8 @@ async function startNormal(): Promise<void> {
     calendarEvent: () => calendar.currentEvent(),
     activeMeeting: () => meetings.activeMeetingId,
     startMeeting: (title) => {
+      // Never take over a meeting you started: the detector would later stop it.
+      if (meetings.active) return null
       meetings.start(title)
       pipeline.sync()
       return meetings.activeMeetingId
