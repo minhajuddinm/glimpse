@@ -27,7 +27,7 @@
 
 ## Quick start
 
-1. **Install.** Download `Glimpse Setup x.y.z.exe` from [Releases](https://github.com/minhajuddinm/glimpse/releases/latest) and run it. Windows may warn that the app is unrecognised: click **More info → Run anyway** ([why](docs/install.md#windows-protected-your-pc)).
+1. **Install.** Download `Glimpse.Setup.x.y.z.exe` from [Releases](https://github.com/minhajuddinm/glimpse/releases/latest) and run it. Windows may warn that the app is unrecognised: click **More info → Run anyway** ([why](docs/install.md#windows-protected-your-pc)).
 2. **Add an AI key.** Open Glimpse from the system tray, go to **Answers**, and paste an [Anthropic key](docs/api-keys.md#anthropic-recommended) (best answers, about $0.04 per hour of calls) or a [free Groq key](docs/api-keys.md#groq-free).
 3. **Add your notes.** Go to **Notes → Add files…** and add your resume, prepared answers and so on ([how to write notes that work well](docs/notes.md)).
 4. **Show the panel.** Press `Ctrl+Alt+G`. Join a call and questions get answered on their own, or press `Ctrl+Alt+Enter` to answer now.

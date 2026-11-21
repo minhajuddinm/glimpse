@@ -11,7 +11,7 @@ You don't need admin rights, Node.js, Python or a graphics card.
 
 ## 1. Download
 
-Go to the [latest release](https://github.com/minhajuddinm/glimpse/releases/latest). Under **Assets**, download **`Glimpse Setup x.y.z.exe`** (about 320 MB). The speech and search models are included, so nothing more is downloaded on first run.
+Go to the [latest release](https://github.com/minhajuddinm/glimpse/releases/latest). Under **Assets**, download **`Glimpse.Setup.x.y.z.exe`** (about 320 MB). The speech and search models are included, so nothing more is downloaded on first run.
 
 ## 2. Run the installer
 
