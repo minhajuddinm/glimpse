@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { release } from 'node:os'
 import { join } from 'node:path'
-import { Notification, app, globalShortcut, systemPreferences, type Tray } from 'electron'
+import { Notification, app, globalShortcut, shell, systemPreferences, type Tray } from 'electron'
 import { broadcast } from './broadcast'
 import { isHeadless, parseCli } from './cli'
 import { openDatabase, type Db } from './db'
@@ -31,8 +31,9 @@ import { dataPaths, useDataRoot } from './paths'
 import { MeetingManager } from './meetings/manager'
 import { MeetingStore } from './meetings/store'
 import { notesMeetingFiles, registerMeetingHandlers } from './meetingHandlers'
-import { CalendarService, fetchFeed } from './calendar/service'
-import { inviteText } from './calendar/ics'
+import { CalendarService, fetchFeed, GOOGLE_SOURCE } from './calendar/service'
+import { inviteText, parseCalendar } from './calendar/ics'
+import { GoogleCalendar, parseSavedClient } from './calendar/google'
 import { registerCalendarHandlers } from './calendarHandlers'
 import { MeetingDetector, windowsProbes } from './meetings/detect'
 
@@ -207,10 +208,17 @@ async function startNormal(): Promise<void> {
   const notify = (title: string, body: string): void => {
     if (Notification.isSupported()) new Notification({ title, body, icon: join(app.getAppPath(), 'resources', 'icon.png') }).show()
   }
-  // Calendar: read-only from the secret iCal address; briefs before meetings and meeting titles.
+  // Calendar: read-only, through a Google sign-in or a secret iCal address; briefs before meetings and meeting titles.
+  const googleClient = () => parseSavedClient(secrets.get('google-client'))
+  const google = new GoogleCalendar({ client: googleClient, refreshToken: () => secrets.get('google-token'), now: () => Date.now() })
   const calendar = new CalendarService({
-    url: () => secrets.get('calendar'),
-    fetchText: fetchFeed,
+    source: () => {
+      const client = googleClient()
+      if (client !== null && secrets.has('google-token')) return `${GOOGLE_SOURCE}${client.id}`
+      return secrets.get('calendar')
+    },
+    load: async (source, from, to) => (source.startsWith(GOOGLE_SOURCE) ? google.events(from, to) : parseCalendar(await fetchFeed(source), from, to)),
+    googleClientId: () => googleClient()?.id ?? null,
     now: () => Date.now(),
     settings: () => settings.get(),
     onBrief: (event) => {
@@ -339,7 +347,9 @@ async function startNormal(): Promise<void> {
   })
   registerCalendarHandlers({
     calendar,
+    google,
     secrets,
+    openBrowser: (url) => shell.openExternal(url),
     now: () => Date.now(),
     brief: (invite) => {
       void answers.ask(invite, 'brief')

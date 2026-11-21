@@ -1,10 +1,87 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, CalendarX2, Link2, Mic, RefreshCw, Sparkles, Unplug, Users } from 'lucide-react'
+import { CalendarDays, CalendarX2, Link2, LogIn, Mic, RefreshCw, Sparkles, Unplug, Users, X } from 'lucide-react'
 import { isRealMeeting, type CalendarEvent, type CalendarStatus } from '../../../shared/calendar'
 import type { MeetingState } from '../../../shared/meetings'
 import { errorMessage, subscribe } from '../ipc'
 import { useSettingsStore } from '../store'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Row, TextInput, Toggle } from '../ui'
+
+const STEP = 'text-text'
+
+/** Sign in with Google: the client comes from the user's own Google Cloud project (a one-time setup). */
+function GoogleConnect({ savedClientId, onStatus, onError }: { savedClientId: string | null; onStatus: (status: CalendarStatus) => void; onError: (message: string | null) => void }) {
+  const [clientId, setClientId] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [editing, setEditing] = useState(savedClientId === null)
+  const [waiting, setWaiting] = useState(false)
+
+  const connect = async (): Promise<void> => {
+    setWaiting(true)
+    onError(null)
+    try {
+      onStatus(await window.glimpse.invoke('calendar:google-connect', editing ? { clientId, clientSecret } : { clientId: '', clientSecret: '' }))
+      setClientSecret('')
+    } catch (caught) {
+      onError(errorMessage(caught))
+    } finally {
+      setWaiting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {editing && (
+        <details className="rounded-xl border border-hairline bg-white/[0.02] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-text-muted" open={savedClientId === null}>
+          <summary className="cursor-pointer select-none font-medium text-text">One-time setup in Google Cloud (about 5 minutes, free)</summary>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-5">
+            <li>
+              Open <span className={STEP}>console.cloud.google.com</span> (any Google account) and create a project, for example “Glimpse”.
+            </li>
+            <li>
+              <span className={STEP}>APIs &amp; Services → Library</span> → search <span className={STEP}>Google Calendar API</span> → <span className={STEP}>Enable</span>.
+            </li>
+            <li>
+              <span className={STEP}>Google Auth Platform → Get started</span>: app name Glimpse, your email, audience <span className={STEP}>External</span> (or Internal if offered) → Create.
+            </li>
+            <li>
+              <span className={STEP}>Audience → Publish app</span>. Otherwise Google signs you out every 7 days. (Or add yourself under Test users.)
+            </li>
+            <li>
+              <span className={STEP}>Clients → Create client</span> → type <span className={STEP}>Desktop app</span> → Create, then copy the Client ID and Client secret below.
+            </li>
+            <li>
+              When you sign in, Google warns that the app isn’t verified (it is your own project): <span className={STEP}>Advanced → Go to Glimpse</span>, then allow
+              read-only access to your calendar events.
+            </li>
+          </ol>
+        </details>
+      )}
+      {editing ? (
+        <div className="space-y-2">
+          <TextInput value={clientId} onChange={setClientId} placeholder="Client ID: 1234…apps.googleusercontent.com" aria-label="Google client ID" />
+          <TextInput type="password" value={clientSecret} onChange={setClientSecret} placeholder="Client secret: GOCSPX-…" onEnter={() => void connect()} aria-label="Google client secret" />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 text-xs text-text-faint">
+          <span className="min-w-0 flex-1 truncate">Google client {savedClientId?.split('-')[0] ?? ''}… is saved.</span>
+          <Button tone="ghost" size="sm" onClick={() => { setEditing(true) }}>
+            Use another
+          </Button>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <Button icon={LogIn} disabled={waiting || (editing && (clientId.trim() === '' || clientSecret.trim() === ''))} onClick={() => void connect()}>
+          {waiting ? 'Waiting for Google in your browser…' : 'Sign in with Google'}
+        </Button>
+        {waiting && (
+          <Button tone="ghost" size="sm" icon={X} onClick={() => void window.glimpse.invoke('calendar:google-cancel', null)}>
+            Cancel
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const time = (at: number): string => new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 
@@ -119,7 +196,7 @@ export function CalendarCard({ meeting }: { meeting: MeetingState }) {
     <Card
       title="Calendar"
       icon={CalendarDays}
-      description="Read-only, from your calendar’s private iCal address: no sign-in, nothing is changed in your calendar."
+      description="Read-only: Glimpse sees your events and never changes your calendar."
       actions={badge}
     >
       {error !== null && (
@@ -129,23 +206,29 @@ export function CalendarCard({ meeting }: { meeting: MeetingState }) {
       )}
 
       {!status.connected ? (
-        <div className="space-y-3">
-          <ol className="list-decimal space-y-1 pl-5 text-[12.5px] leading-relaxed text-text-muted">
-            <li>
-              <span className="text-text">Google Calendar</span> on the web → Settings → click your calendar under “Settings for my calendars” → Integrate calendar →
-              copy <span className="text-text">“Secret address in iCal format”</span>.
-            </li>
-            <li>
-              <span className="text-text">Outlook</span>: Settings → Calendar → Shared calendars → Publish a calendar → copy the ICS link.
-            </li>
-            <li>Paste it below. Treat it like a password: anyone with it can read your calendar.</li>
-          </ol>
-          <div className="flex items-center gap-2">
-            <TextInput type="password" value={url} onChange={setUrl} placeholder="https://calendar.google.com/calendar/ical/…/private-…/basic.ics" onEnter={() => void save(url)} aria-label="Secret calendar address" />
-            <Button icon={CalendarDays} disabled={busy || url.trim() === ''} onClick={() => void save(url)}>
-              Connect
-            </Button>
-          </div>
+        <div className="space-y-4">
+          <GoogleConnect savedClientId={status.googleClientId} onStatus={setStatus} onError={setError} />
+          <details className="border-t border-hairline pt-3">
+            <summary className="cursor-pointer select-none text-[12.5px] font-medium text-text-muted">Or use a secret iCal address (no Google Cloud needed, if your account has one)</summary>
+            <div className="mt-3 space-y-3">
+              <ol className="list-decimal space-y-1 pl-5 text-[12.5px] leading-relaxed text-text-muted">
+                <li>
+                  <span className="text-text">Google Calendar</span> on the web → Settings → click your calendar under “Settings for my calendars” → Integrate calendar →
+                  copy <span className="text-text">“Secret address in iCal format”</span>.
+                </li>
+                <li>
+                  <span className="text-text">Outlook</span>: Settings → Calendar → Shared calendars → Publish a calendar → copy the ICS link.
+                </li>
+                <li>Paste it below. Treat it like a password: anyone with it can read your calendar.</li>
+              </ol>
+              <div className="flex items-center gap-2">
+                <TextInput type="password" value={url} onChange={setUrl} placeholder="https://calendar.google.com/calendar/ical/…/private-…/basic.ics" onEnter={() => void save(url)} aria-label="Secret calendar address" />
+                <Button icon={CalendarDays} disabled={busy || url.trim() === ''} onClick={() => void save(url)}>
+                  Connect
+                </Button>
+              </div>
+            </div>
+          </details>
         </div>
       ) : (
         <div className="space-y-3">
@@ -157,7 +240,21 @@ export function CalendarCard({ meeting }: { meeting: MeetingState }) {
             <Button tone="subtle" size="sm" icon={RefreshCw} disabled={busy || status.state === 'syncing'} onClick={() => void window.glimpse.invoke('calendar:refresh', null).then(setStatus)}>
               Refresh
             </Button>
-            <Button tone="subtle" size="sm" icon={Unplug} disabled={busy} onClick={() => void save('')}>
+            <Button
+              tone="subtle"
+              size="sm"
+              icon={Unplug}
+              disabled={busy}
+              onClick={() => {
+                if (status.via === 'google') {
+                  setBusy(true)
+                  void window.glimpse
+                    .invoke('calendar:google-disconnect', null)
+                    .then(setStatus, (caught: unknown) => { setError(errorMessage(caught)) })
+                    .finally(() => { setBusy(false) })
+                } else void save('')
+              }}
+            >
               Disconnect
             </Button>
           </div>

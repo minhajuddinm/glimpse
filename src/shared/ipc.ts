@@ -127,7 +127,11 @@ export const ipcContract = {
   /** Saves (encrypted) and syncs the secret iCal address; an empty string disconnects. */
   'calendar:set-url': { request: z.object({ url: z.string().max(2000) }), response: CalendarStatusSchema },
   'calendar:refresh': { request: z.null(), response: CalendarStatusSchema },
-  'calendar:brief': { request: z.object({ id: z.string().max(1000) }), response: z.null() }
+  'calendar:brief': { request: z.object({ id: z.string().max(1000) }), response: z.null() },
+  /** Saves the Google client (both empty: use the saved one) and runs the browser sign-in. */
+  'calendar:google-connect': { request: z.object({ clientId: z.string().max(300), clientSecret: z.string().max(300) }), response: CalendarStatusSchema },
+  'calendar:google-cancel': { request: z.null(), response: z.null() },
+  'calendar:google-disconnect': { request: z.null(), response: CalendarStatusSchema }
 } as const satisfies Record<string, { request: z.ZodType; response: z.ZodType }>
 
 /** Main → renderer pushes. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildPrompt } from '../src/main/answers/prompt'
-import { inviteText } from '../src/main/calendar/ics'
+import { inviteText, parseCalendar } from '../src/main/calendar/ics'
 import { BRIEF_LEAD_MS, CalendarService, fetchFeed } from '../src/main/calendar/service'
 import type { CalendarEvent, CalendarStatus } from '../src/shared/calendar'
 
@@ -29,8 +29,9 @@ function setup(ics: string | Error, options: { brief?: boolean; url?: string | n
   const log: string[] = []
   const statuses: CalendarStatus[] = []
   const service = new CalendarService({
-    url: () => url,
-    fetchText: (address) => fetchText(address),
+    source: () => url,
+    load: async (address, from, to) => parseCalendar(await fetchText(address), from, to),
+    googleClientId: () => null,
     now: () => now,
     settings: () => ({ calendarBrief: options.brief ?? true }),
     onBrief: (event) => log.push(`brief:${event.title}`),

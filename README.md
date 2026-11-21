@@ -144,11 +144,23 @@ Recording laws differ by place, and many require everyone on the call to agree t
 
 ### Calendar
 
-Connect your calendar in **Meetings → Calendar** with its private iCal address. It's read-only, with no Google sign-in, and Glimpse never changes your calendar.
+Connect your calendar in **Meetings → Calendar**. Access is read-only: Glimpse never changes your calendar. There are two ways to connect.
+
+**Sign in with Google.** This works for school and work accounts that hide the secret address. Glimpse isn't a published Google app, so you create your own free OAuth client once:
+1. On [console.cloud.google.com](https://console.cloud.google.com), using any Google account, create a project.
+2. Go to **APIs & Services → Library → Google Calendar API** and click **Enable**.
+3. Go to **Google Auth Platform → Get started**. Enter an app name and your email, choose the **External** audience (or **Internal** if it's offered), then click **Create**.
+4. Go to **Audience** and click **Publish app**. While an app is in "Testing", Google signs you out every 7 days.
+5. Go to **Clients → Create client**, choose the **Desktop app** type, and copy the client ID and secret into Glimpse.
+6. Click **Sign in with Google**. Your browser opens Google's own sign-in page. Google warns that the app isn't verified, because it's your own project: click **Advanced → Go to …**, then allow read-only access to your events.
+
+Glimpse asks only for `calendar.events.readonly`. The client secret and the sign-in token are stored encrypted, like the API keys. Some universities and companies block apps they haven't approved; Google then shows an "Access blocked" page, and only your administrator can allow it.
+
+**Secret iCal address.** Paste the address under *Or use a secret iCal address*. Treat it like a password: reset it in your calendar's settings if it leaks.
 - **Google Calendar** (web): Settings → your calendar → Integrate calendar → *Secret address in iCal format*.
 - **Outlook**: Settings → Calendar → Shared calendars → Publish a calendar → ICS link.
 
-The address is stored encrypted, like the API keys, and never shown again. Treat it like a password: reset it in your calendar's settings if it leaks. Glimpse syncs every 5 minutes and then:
+Glimpse syncs every 5 minutes and then:
 - Lists what's happening now and in the next 24 hours, with **Brief** and **Record** buttons.
 - **Brief me before meetings** (on by default): 5 minutes before a meeting with other people or a call link, the overlay shows who you're meeting and what to prepare. The brief comes from the invite and your notes.
 - A meeting started without a title, including one recorded automatically when you join a call, is named after the calendar meeting happening now.

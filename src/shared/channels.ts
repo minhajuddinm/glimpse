@@ -62,7 +62,10 @@ export const INVOKE_CHANNELS = [
   'calendar:status',
   'calendar:set-url',
   'calendar:refresh',
-  'calendar:brief'
+  'calendar:brief',
+  'calendar:google-connect',
+  'calendar:google-cancel',
+  'calendar:google-disconnect'
 ] as const satisfies readonly InvokeChannel[]
 
 export const EVENT_CHANNELS = [

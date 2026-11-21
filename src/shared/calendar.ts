@@ -20,8 +20,11 @@ export const CalendarEventSchema = z.object({
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>
 
 export const CalendarStatusSchema = z.object({
-  /** A calendar address is saved. */
+  /** A calendar is connected (Google sign-in or a secret address). */
   connected: z.boolean(),
+  via: z.enum(['google', 'ics']).nullable(),
+  /** The Google client ID saved from an earlier sign-in (not a secret). */
+  googleClientId: z.string().nullable(),
   state: z.enum(['off', 'syncing', 'ok', 'error']),
   message: z.string(),
   lastSyncAt: z.number().nullable(),

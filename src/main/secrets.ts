@@ -1,9 +1,9 @@
 import { safeStorage } from 'electron'
 import type { SettingsStore } from './settingsStore'
 
-/** API keys, and the calendar's secret address (anyone with it can read the calendar). */
-export type SecretName = 'anthropic' | 'groq' | 'calendar'
-const NAMES: readonly SecretName[] = ['anthropic', 'groq', 'calendar']
+/** API keys, the calendar's secret address, and the Google sign-in (client JSON, refresh token). */
+export type SecretName = 'anthropic' | 'groq' | 'calendar' | 'google-client' | 'google-token'
+const NAMES: readonly SecretName[] = ['anthropic', 'groq', 'calendar', 'google-client', 'google-token']
 
 /**
  * API keys, encrypted with Windows DPAPI through Electron safeStorage and kept in

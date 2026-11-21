@@ -1,5 +1,4 @@
 import { isRealMeeting, type CalendarEvent, type CalendarStatus } from '../../shared/calendar'
-import { parseCalendar } from './ics'
 
 export const SYNC_MS = 5 * 60_000
 export const TICK_MS = 30_000
@@ -8,12 +7,17 @@ export const BRIEF_LEAD_MS = 5 * 60_000
 /** "Start meeting" with no title borrows the title of a meeting starting this soon. */
 const TITLE_LEAD_MS = 10 * 60_000
 const MAX_FEED_BYTES = 10 * 1024 * 1024
-const MESSAGE_OFF = 'Not connected. Paste your calendar’s secret iCal address to turn it on.'
+const MESSAGE_OFF = 'Not connected. Sign in with Google, or paste your calendar’s secret iCal address.'
+/** Sources that start with this are a Google sign-in; anything else is an iCal address. */
+export const GOOGLE_SOURCE = 'google:'
 
 export interface CalendarServiceOptions {
-  /** The saved (decrypted) feed address, or null. */
-  readonly url: () => string | null
-  readonly fetchText: (url: string) => Promise<string>
+  /** Where the calendar comes from: "google:<client id>" after a Google sign-in, else the (decrypted) iCal address, or null. */
+  readonly source: () => string | null
+  /** Reads the events overlapping [from, to) from that source. */
+  readonly load: (source: string, from: number, to: number) => Promise<CalendarEvent[]>
+  /** The saved Google client ID (not a secret), so signing in again needs no retyping. */
+  readonly googleClientId: () => string | null
   readonly now: () => number
   readonly settings: () => { readonly calendarBrief: boolean }
   readonly onBrief: (event: CalendarEvent) => void
@@ -47,8 +51,8 @@ export async function fetchFeed(url: string): Promise<string> {
  */
 export class CalendarService {
   private events: CalendarEvent[] = []
-  /** The address `events` came from: another address must not show (or record) the old calendar. */
-  private eventsUrl: string | null = null
+  /** The source `events` came from: another source must not show the old calendar. */
+  private eventsSource: string | null = null
   private state: CalendarStatus['state'] = 'off'
   private message = MESSAGE_OFF
   private lastSyncAt: number | null = null
@@ -75,8 +79,11 @@ export class CalendarService {
 
   status(): CalendarStatus {
     const now = this.options.now()
+    const source = this.options.source()
     return {
-      connected: this.options.url() !== null,
+      connected: source !== null,
+      via: source === null ? null : source.startsWith(GOOGLE_SOURCE) ? 'google' : 'ics',
+      googleClientId: this.options.googleClientId(),
       state: this.state,
       message: this.message,
       lastSyncAt: this.lastSyncAt,
@@ -118,10 +125,10 @@ export class CalendarService {
 
   private async sync(): Promise<void> {
     for (;;) {
-      const url = this.options.url()
-      if (url !== this.eventsUrl) {
+      const url = this.options.source()
+      if (url !== this.eventsSource) {
         this.events = []
-        this.eventsUrl = url
+        this.eventsSource = url
         this.lastSyncAt = null
       }
       if (url === null) {
@@ -135,19 +142,19 @@ export class CalendarService {
       const now = this.options.now()
       let outcome: { readonly events: CalendarEvent[] } | { readonly error: string }
       try {
-        const text = await this.options.fetchText(url)
-        outcome = { events: parseCalendar(text, now - 12 * 3600_000, now + 36 * 3600_000) }
+        outcome = { events: await this.options.load(url, now - 12 * 3600_000, now + 36 * 3600_000) }
       } catch (error) {
         outcome = { error: error instanceof Error ? error.message : String(error) }
       }
       // The address was changed or removed while downloading: that result is for the old one.
-      if (this.options.url() !== url) continue
+      if (this.options.source() !== url) continue
       if ('events' in outcome) {
         this.events = outcome.events
         this.lastSyncAt = this.options.now()
         this.state = 'ok'
         const upcoming = this.status().events.length
-        this.message = upcoming === 0 ? 'Connected. Nothing in the next 24 hours.' : `Connected. ${String(upcoming)} event${upcoming === 1 ? '' : 's'} in the next 24 hours.`
+        const connected = url.startsWith(GOOGLE_SOURCE) ? 'Connected to Google Calendar' : 'Connected'
+        this.message = upcoming === 0 ? `${connected}. Nothing in the next 24 hours.` : `${connected}. ${String(upcoming)} event${upcoming === 1 ? '' : 's'} in the next 24 hours.`
         this.tick()
       } else {
         // Keep the last good events: a dropped connection should not blank the list.
