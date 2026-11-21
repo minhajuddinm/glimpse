@@ -71,10 +71,16 @@ One line per deviation from BRIEF v2, with the reason.
 - Known limit: a sentence still being spoken when you press Stop may be cut (its final text arrives after the meeting closed).
 
 ## Calendar (2026-11-20)
-- **Secret iCal address instead of Google OAuth**: no Cloud project, no "unverified app" screen or 100-test-user limit. It works with Google, Outlook and iCloud. It's read-only, which is all briefs and auto-recording need. OAuth stays an option if write access is ever wanted.
+- **Secret iCal address instead of Google OAuth**: no Cloud project, no "unverified app" screen or 100-test-user limit. It works with Google, Outlook and iCloud. It's read-only, which is all briefs need. OAuth stays an option if write access is ever wanted.
 - **The address is a secret**: stored with `safeStorage` like the API keys, write-only over IPC (the renderer only learns *connected*), never logged. Only https:// (webcal:// is rewritten); 20 s timeout, 10 MB cap.
 - **ical.js 2.2.1** (Mozilla, no dependencies) for parsing: it handles RRULE/EXDATE/RECURRENCE-ID and the feed's VTIMEZONE definitions. Its types claim text properties are always strings and `RecurExpansion.next()` always returns a Time; both can be null, so they are read defensively (found by tests).
-- **"Real meeting" = at least 2 attendees or a video-call link**, and not all-day. Only these get briefs or auto-recording, so focus blocks and reminders never start the microphone.
+- **"Real meeting" = at least 2 attendees or a video-call link**, and not all-day. Only these get briefs.
 - **Brief is a new answer kind** (`brief`, ≤ 90 words, Haiku): the prompt gets the invite in `<meeting>` instead of the live transcript, and notes are searched with the invite text.
-- **Auto-recording off by default**, with a notification on every automatic start and stop: being transcribed should never be a surprise. It starts at most 10 minutes late, stops 10 minutes after the calendar end, never restarts a meeting the user stopped, and never stops one the user started.
 - Sync failures keep the last good event list, so a dropped connection doesn't blank it.
+
+## Recording the calls you join (2026-11-20)
+- **Replaces calendar auto-recording**, at the user's request: a calendar meeting you don't join must not be recorded. The calendar now only names recordings and vouches for browser calls. The `calendarAutoStart` setting is gone (stored values are ignored); `autoRecordCalls` is off by default.
+- **"Joined" = a call app has the microphone open**, read from Windows' CapabilityAccessManager record (`HKCU…ConsentStoremicrophone`, `LastUsedTimeStop = 0`). This is the record behind the taskbar's mic icon. `reg.exe query` takes about 30 ms, every 3 s, and only while the setting is on. No native hooks, no admin rights, and nothing about the call's content.
+- **An allow-list of call apps** (Zoom, Teams, Webex, Slack, Skype, GoTo, RingCentral) plus browsers. Other mic users (OBS, games, dictation tools, Glimpse itself) are ignored. A browser holds the mic for many reasons, so it counts only when a window title shows a call (Meet, Teams, Zoom, Webex, Jitsi, Whereby) or a calendar meeting with a call link is on. Window titles come from `tasklist /v` for that browser only, checked at most every 10 s.
+- **5 s to start, 20 s to stop**: a quick mic test is not a call, and a device switch or reconnect is not the end of one. A record left open by a crashed app is ignored when the app isn't running; this is checked before starting, and every minute while recording.
+- Known limit: joining with "don't connect audio", or an app that closes the mic while you are muted, is not detected. Start the meeting by hand (`Ctrl+Alt+N`).

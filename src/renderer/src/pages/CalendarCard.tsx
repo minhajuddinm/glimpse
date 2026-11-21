@@ -178,9 +178,6 @@ export function CalendarCard({ meeting }: { meeting: MeetingState }) {
         <Row label="Brief me before meetings" hint="5 minutes before a meeting with other people, the overlay shows who you are meeting and what to prepare, from the invite and your notes.">
           <Toggle checked={settings.calendarBrief} onChange={(checked) => void update({ calendarBrief: checked })} />
         </Row>
-        <Row label="Record calendar meetings automatically" hint="Starts a meeting when one with other people or a call link begins, and stops it 10 minutes after it ends. A notification tells you each time.">
-          <Toggle checked={settings.calendarAutoStart} onChange={(checked) => void update({ calendarAutoStart: checked })} />
-        </Row>
       </div>
     </Card>
   )

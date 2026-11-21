@@ -422,6 +422,12 @@ export function MeetingsPage() {
 
       <Card title="Meeting settings" icon={Settings2}>
         <Row
+          label="Record calls I join automatically"
+          hint="When Zoom, Teams, Webex, Slack or a Google Meet / Teams / Zoom tab in your browser opens your microphone, Glimpse starts recording, and stops when you leave the call. Calendar meetings you don’t join are never recorded. A notification tells you each time."
+        >
+          <Toggle checked={settings.autoRecordCalls} onChange={(checked) => void update({ autoRecordCalls: checked })} />
+        </Row>
+        <Row
           label="When Glimpse listens"
           hint={
             settings.listenMode === 'meetings'

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildPrompt } from '../src/main/answers/prompt'
 import { inviteText } from '../src/main/calendar/ics'
-import { BRIEF_LEAD_MS, CalendarService, fetchFeed, OVERRUN_MS } from '../src/main/calendar/service'
+import { BRIEF_LEAD_MS, CalendarService, fetchFeed } from '../src/main/calendar/service'
 import type { CalendarEvent, CalendarStatus } from '../src/shared/calendar'
 
 const T0 = Date.parse('2026-11-23T18:50:00Z')
@@ -21,10 +21,8 @@ function feed(events: readonly { uid: string; start: number; end: number; title:
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', ...body, 'END:VCALENDAR'].join('\r\n')
 }
 
-function setup(ics: string | Error, options: { brief?: boolean; auto?: boolean; url?: string | null } = {}) {
+function setup(ics: string | Error, options: { brief?: boolean; url?: string | null } = {}) {
   let now = T0
-  let active: number | null = null
-  let nextId = 1
   let url = options.url === undefined ? 'https://calendar.example/private.ics' : options.url
   let text: string | Error = ics
   let fetchText: (address: string) => Promise<string> = () => (text instanceof Error ? Promise.reject(text) : Promise.resolve(text))
@@ -34,17 +32,7 @@ function setup(ics: string | Error, options: { brief?: boolean; auto?: boolean; 
     url: () => url,
     fetchText: (address) => fetchText(address),
     now: () => now,
-    settings: () => ({ calendarBrief: options.brief ?? true, calendarAutoStart: options.auto ?? false }),
-    activeMeeting: () => active,
-    startMeeting: (title) => {
-      active = nextId++
-      log.push(`start:${title}`)
-      return active
-    },
-    stopMeeting: () => {
-      active = null
-      log.push('stop')
-    },
+    settings: () => ({ calendarBrief: options.brief ?? true }),
     onBrief: (event) => log.push(`brief:${event.title}`),
     notify: (title) => log.push(`notify:${title}`),
     onStatus: (status) => statuses.push(status)
@@ -56,10 +44,6 @@ function setup(ics: string | Error, options: { brief?: boolean; auto?: boolean; 
     at: (ms: number) => {
       now = ms
       service.tick()
-    },
-    /** You start (true: a new meeting) or stop (false) a meeting by hand. */
-    setActive: (value: boolean) => {
-      active = value ? nextId++ : null
     },
     setFeed: (value: string | Error) => {
       text = value
@@ -105,43 +89,6 @@ describe('CalendarService', () => {
     const { service, log, at } = setup(feed([CALL]), { brief: false })
     await service.refresh()
     at(CALL.start - 60_000)
-    expect(log).toEqual([])
-  })
-
-  it('auto-records a real meeting and stops it after the overrun window', async () => {
-    const { service, log, at } = setup(feed([CALL, FOCUS]), { brief: false, auto: true })
-    await service.refresh()
-    at(FOCUS.start + 1000)
-    expect(log).toEqual([])
-    at(CALL.start)
-    expect(log).toEqual(['start:Acme pricing call', 'notify:Recording “Acme pricing call”'])
-    at(CALL.end + OVERRUN_MS - 1000)
-    expect(log).not.toContain('stop')
-    at(CALL.end + OVERRUN_MS)
-    expect(log).toContain('stop')
-  })
-
-  it('never restarts a meeting you stopped, and leaves your own meeting alone', async () => {
-    const stopped = setup(feed([CALL]), { brief: false, auto: true })
-    await stopped.service.refresh()
-    stopped.at(CALL.start)
-    stopped.setActive(false) // You pressed stop.
-    stopped.at(CALL.start + 60_000)
-    stopped.at(CALL.end + OVERRUN_MS)
-    expect(stopped.log.filter((entry) => entry === 'stop' || entry.startsWith('start'))).toEqual(['start:Acme pricing call'])
-
-    const manual = setup(feed([CALL]), { brief: false, auto: true })
-    await manual.service.refresh()
-    manual.setActive(true) // You started a meeting yourself.
-    manual.at(CALL.start)
-    manual.at(CALL.end + OVERRUN_MS)
-    expect(manual.log).toEqual([])
-  })
-
-  it('does not auto-start long after the start (late launch)', async () => {
-    const { service, log, at } = setup(feed([{ ...CALL, end: CALL.start + 120 * 60_000 }]), { brief: false, auto: true })
-    await service.refresh()
-    at(CALL.start + 11 * 60_000)
     expect(log).toEqual([])
   })
 
@@ -195,7 +142,7 @@ describe('meeting brief prompt', () => {
   })
 })
 
-describe('CalendarService: changes and hand-overs', () => {
+describe('CalendarService: address changes', () => {
   it('does not keep showing the old calendar after the address changes and the new one fails', async () => {
     const { service, setUrl, setFeed } = setup(feed([CALL]))
     await service.refresh()
@@ -227,38 +174,6 @@ describe('CalendarService: changes and hand-overs', () => {
     expect(removed.service.status()).toMatchObject({ connected: false, state: 'off', events: [] })
     removed.at(CALL.start - 60_000)
     expect(removed.log).toEqual([])
-  })
-
-  it('does not restart a meeting you recorded yourself and then stopped', async () => {
-    const { service, log, at, setActive } = setup(feed([CALL]), { brief: false, auto: true })
-    await service.refresh()
-    setActive(true) // Record pressed a few minutes early.
-    at(CALL.start - 30_000)
-    setActive(false) // ...and stopped.
-    at(CALL.start + 60_000)
-    expect(log).toEqual([])
-  })
-
-  it('never stops a meeting you started after stopping the automatic one', async () => {
-    const { service, log, at, setActive } = setup(feed([CALL]), { brief: false, auto: true })
-    await service.refresh()
-    at(CALL.start)
-    setActive(false) // You stop Glimpse's recording...
-    setActive(true) // ...and start your own before the next tick.
-    at(CALL.start + 30_000)
-    at(CALL.end + OVERRUN_MS)
-    expect(log.filter((entry) => entry === 'stop')).toEqual([])
-  })
-
-  it('hands over from one automatic recording to the next back-to-back meeting', async () => {
-    const next = { uid: 'next', start: CALL.end, end: CALL.end + 30 * 60_000, title: 'Board review', link: true }
-    const { service, log, at } = setup(feed([CALL, next]), { brief: false, auto: true })
-    await service.refresh()
-    at(CALL.start)
-    at(next.start - 30_000) // The first meeting is still on: keep recording it.
-    expect(log.filter((entry) => entry.startsWith('start') || entry === 'stop')).toEqual(['start:Acme pricing call'])
-    at(next.start)
-    expect(log.filter((entry) => entry.startsWith('start') || entry === 'stop')).toEqual(['start:Acme pricing call', 'stop', 'start:Board review'])
   })
 })
 

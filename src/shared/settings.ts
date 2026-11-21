@@ -37,8 +37,8 @@ export const SettingsSchema = z.object({
   saveMinutesToNotes: z.boolean(),
   /** Show a short brief in the overlay 5 minutes before each calendar meeting. */
   calendarBrief: z.boolean(),
-  /** Start and stop meeting recording with calendar meetings that have other people or a call link. */
-  calendarAutoStart: z.boolean()
+  /** Start recording when you join a call (a call app opens the microphone) and stop when you leave. */
+  autoRecordCalls: z.boolean()
 })
 export type Settings = z.infer<typeof SettingsSchema>
 export type SettingKey = keyof Settings
@@ -69,7 +69,7 @@ export const DEFAULT_SETTINGS: Settings = {
   listenMode: 'always',
   saveMinutesToNotes: true,
   calendarBrief: true,
-  calendarAutoStart: false,
+  autoRecordCalls: false,
   hotkeys: DEFAULT_HOTKEYS
 }
 

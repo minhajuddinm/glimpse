@@ -135,6 +135,7 @@ Start a meeting in **Settings → Meetings** (or press `Ctrl+Alt+N` from any app
 - **Summary**, **Decisions**, **Action items** (`- [ ] Owner — task (due)`), **Open questions** and **Key details** (names, numbers, dates).
 - Copy them, export the minutes plus the full transcript as Markdown, rewrite them, rename or delete the meeting.
 - By default the minutes (not the transcript) are also saved to `<notes folder>/Meetings/`, so later answers can draw on past meetings. Turn this off in Meeting settings.
+- **Record calls I join automatically** (off by default): when a call app opens your microphone, Glimpse starts a meeting, and it stops about 20 seconds after the app lets go of the mic. This works with Zoom, Teams, Webex, Slack huddles, Skype, GoTo, RingCentral, and Google Meet, Teams or Zoom in a browser. Glimpse reads the same Windows record that lights the taskbar's mic icon. A browser counts only when a call tab is in front, or when a calendar meeting with a call link is on. Recording starts after the app has held the mic for 5 seconds, so a quick mic test doesn't count. A calendar meeting you don't join is never recorded. You get a notification on every start and stop. If you stop the recording yourself, Glimpse won't restart it during that call, and it never stops a meeting you started yourself.
 - **When Glimpse listens:** *Always* (default; live answers work any time) or *Only during meetings* (microphone and system audio are off until you start a meeting).
 - Long meetings are summarised in one pass with Claude; with Groq's free tier they are split into parts and merged.
 - `npm run bench:minutes` writes minutes for a scripted sample call with your saved keys and checks the sections and key facts.
@@ -150,8 +151,7 @@ Connect your calendar in **Meetings → Calendar** with its private iCal address
 The address is stored encrypted, like the API keys, and never shown again. Treat it like a password: reset it in your calendar's settings if it leaks. Glimpse syncs every 5 minutes and then:
 - Lists what's happening now and in the next 24 hours, with **Brief** and **Record** buttons.
 - **Brief me before meetings** (on by default): 5 minutes before a meeting with other people or a call link, the overlay shows who you're meeting and what to prepare. The brief comes from the invite and your notes.
-- **Record calendar meetings automatically** (off by default): starts a meeting when one begins and stops it 10 minutes after it ends, with a notification each time. If you stop it yourself, Glimpse won't restart it, and it never stops a meeting you started yourself.
-- A meeting started without a title is named after the calendar meeting happening now.
+- A meeting started without a title, including one recorded automatically when you join a call, is named after the calendar meeting happening now.
 
 Repeating meetings, moved or cancelled repeats, and time zones are handled by [ical.js](https://github.com/kewisch/ical.js).
 

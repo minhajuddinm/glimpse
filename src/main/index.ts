@@ -34,6 +34,7 @@ import { notesMeetingFiles, registerMeetingHandlers } from './meetingHandlers'
 import { CalendarService, fetchFeed } from './calendar/service'
 import { inviteText } from './calendar/ics'
 import { registerCalendarHandlers } from './calendarHandlers'
+import { MeetingDetector, windowsProbes } from './meetings/detect'
 
 const cli = parseCli(process.argv)
 const headless = isHeadless(cli)
@@ -206,12 +207,25 @@ async function startNormal(): Promise<void> {
   const notify = (title: string, body: string): void => {
     if (Notification.isSupported()) new Notification({ title, body, icon: join(app.getAppPath(), 'resources', 'icon.png') }).show()
   }
-  // Calendar: read-only from the secret iCal address; briefs before meetings, optional auto-recording.
+  // Calendar: read-only from the secret iCal address; briefs before meetings and meeting titles.
   const calendar = new CalendarService({
     url: () => secrets.get('calendar'),
     fetchText: fetchFeed,
     now: () => Date.now(),
     settings: () => settings.get(),
+    onBrief: (event) => {
+      void answers.ask(inviteText(event, Date.now()), 'brief')
+    },
+    notify,
+    onStatus: (status) => {
+      broadcast('calendar:status', status)
+    }
+  })
+  // Records the calls you join (a call app opens the mic) and stops when you leave; off by default.
+  const detector = new MeetingDetector({
+    enabled: () => process.platform === 'win32' && settings.get().autoRecordCalls,
+    ...windowsProbes,
+    calendarEvent: () => calendar.currentEvent(),
     activeMeeting: () => meetings.activeMeetingId,
     startMeeting: (title) => {
       meetings.start(title)
@@ -222,13 +236,8 @@ async function startNormal(): Promise<void> {
       meetings.stop()
       pipeline.sync()
     },
-    onBrief: (event) => {
-      void answers.ask(inviteText(event, Date.now()), 'brief')
-    },
     notify,
-    onStatus: (status) => {
-      broadcast('calendar:status', status)
-    }
+    now: () => Date.now()
   })
   /** A meeting started without a title is named after the calendar meeting happening now. */
   const meetingTitle = (title: string): string => (title.trim() !== '' ? title : (calendar.currentEvent()?.title ?? ''))
@@ -362,6 +371,7 @@ async function startNormal(): Promise<void> {
 
   app.on('before-quit', () => {
     calendar.stop()
+    detector.stop()
     meetings.shutdown()
     kb.stop()
     answers.clear()
@@ -391,6 +401,7 @@ async function startNormal(): Promise<void> {
   showSettingsWindow()
   await secrets.load()
   calendar.start()
+  detector.start()
   if (process.platform === 'darwin') {
     // macOS asks once for the microphone; system audio is asked for on first capture (NSAudioCaptureUsageDescription).
     const granted = await systemPreferences.askForMediaAccess('microphone').catch(() => false)

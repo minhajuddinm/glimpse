@@ -5,10 +5,6 @@ export const SYNC_MS = 5 * 60_000
 export const TICK_MS = 30_000
 /** The brief appears this long before a meeting starts. */
 export const BRIEF_LEAD_MS = 5 * 60_000
-/** Auto-recording starts up to this long after the start (Glimpse launched late, PC woke up). */
-export const LATE_START_MS = 10 * 60_000
-/** An auto-started meeting is stopped this long after the calendar end, unless you stopped it already. */
-export const OVERRUN_MS = 10 * 60_000
 /** "Start meeting" with no title borrows the title of a meeting starting this soon. */
 const TITLE_LEAD_MS = 10 * 60_000
 const MAX_FEED_BYTES = 10 * 1024 * 1024
@@ -19,12 +15,7 @@ export interface CalendarServiceOptions {
   readonly url: () => string | null
   readonly fetchText: (url: string) => Promise<string>
   readonly now: () => number
-  readonly settings: () => { readonly calendarBrief: boolean; readonly calendarAutoStart: boolean }
-  /** The id of the meeting being recorded, or null. */
-  readonly activeMeeting: () => number | null
-  /** Starts recording; returns the new meeting's id. */
-  readonly startMeeting: (title: string) => number | null
-  readonly stopMeeting: () => void
+  readonly settings: () => { readonly calendarBrief: boolean }
   readonly onBrief: (event: CalendarEvent) => void
   readonly notify: (title: string, body: string) => void
   readonly onStatus: (status: CalendarStatus) => void
@@ -51,8 +42,8 @@ export async function fetchFeed(url: string): Promise<string> {
 
 /**
  * Reads the user's calendar from its private iCal address (read-only, no sign-in), shows
- * what is coming up, prepares a brief before each meeting and, if allowed, starts and
- * stops meeting recording with the calendar.
+ * what is coming up and prepares a brief before each meeting. It never records on its own:
+ * recording follows the calls you actually join (see meetings/detect.ts).
  */
 export class CalendarService {
   private events: CalendarEvent[] = []
@@ -64,10 +55,6 @@ export class CalendarService {
   private timers: ReturnType<typeof setInterval>[] = []
   private syncing: Promise<void> | null = null
   private readonly briefed = new Set<string>()
-  /** Events whose recording is settled: started by Glimpse, or already covered by your own meeting. */
-  private readonly autoStarted = new Set<string>()
-  /** The meeting Glimpse started for a calendar event, so it can stop it too (and only it). */
-  private running: { readonly meetingId: number; readonly end: number } | null = null
 
   constructor(private readonly options: CalendarServiceOptions) {}
 
@@ -115,50 +102,17 @@ export class CalendarService {
     return candidates.find(isRealMeeting) ?? candidates[0] ?? null
   }
 
-  /** Every 30 s: the pre-meeting brief, and auto start/stop. Public for tests. */
+  /** Every 30 s: the pre-meeting brief. Public for tests. */
   tick(): void {
+    if (!this.options.settings().calendarBrief) return
     const now = this.options.now()
-    const settings = this.options.settings()
-
-    if (this.running !== null) {
-      if (this.options.activeMeeting() !== this.running.meetingId) {
-        this.running = null // Stopped by hand (and maybe another meeting started since: that one is yours).
-      } else if (now >= this.running.end + OVERRUN_MS) {
-        this.running = null
-        this.options.stopMeeting()
-        this.options.notify('Meeting recording stopped', 'The calendar meeting ended, so Glimpse stopped recording and is writing the minutes.')
-      }
-    }
-
     for (const event of this.events) {
-      if (!isRealMeeting(event)) continue
       const untilStart = event.start - now
-
-      if (settings.calendarBrief && untilStart > 0 && untilStart <= BRIEF_LEAD_MS && !this.briefed.has(event.id)) {
-        this.briefed.add(event.id)
-        this.options.onBrief(event)
-        const minutes = Math.max(1, Math.round(untilStart / 60_000))
-        this.options.notify(`${event.title} in ${String(minutes)} min`, 'Your brief is ready in the overlay.')
-      }
-
-      const inWindow = now >= event.start - 60_000 && now < Math.min(event.end, event.start + LATE_START_MS)
-      if (!settings.calendarAutoStart || !inWindow || this.autoStarted.has(event.id)) continue
-      if (this.options.activeMeeting() !== null) {
-        if (this.running === null) {
-          // You are already recording (say, with Record on this event): if you stop, it stays stopped.
-          this.autoStarted.add(event.id)
-          continue
-        }
-        // Glimpse's recording of the previous meeting: wait while that meeting is on, then hand over.
-        if (now < this.running.end) continue
-        this.running = null
-        this.options.stopMeeting()
-      }
-      this.autoStarted.add(event.id)
-      const meetingId = this.options.startMeeting(event.title)
-      if (meetingId === null) continue
-      this.running = { meetingId, end: event.end }
-      this.options.notify(`Recording “${event.title}”`, 'Glimpse started the meeting from your calendar. Tell the others they are being transcribed.')
+      if (!isRealMeeting(event) || untilStart <= 0 || untilStart > BRIEF_LEAD_MS || this.briefed.has(event.id)) continue
+      this.briefed.add(event.id)
+      this.options.onBrief(event)
+      const minutes = Math.max(1, Math.round(untilStart / 60_000))
+      this.options.notify(`${event.title} in ${String(minutes)} min`, 'Your brief is ready in the overlay.')
     }
   }
 
