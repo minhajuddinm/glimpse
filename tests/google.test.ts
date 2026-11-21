@@ -33,7 +33,7 @@ describe('Google events', () => {
       description: 'Agenda:<br>pricing &amp; terms',
       hangoutLink: 'https://meet.google.com/abc-defg-hij',
       attendees: [
-        { email: 'me@algomau.ca', self: true, responseStatus: 'accepted' },
+        { email: 'me@example.edu', self: true, responseStatus: 'accepted' },
         { email: 'priya@acme.com', displayName: 'Priya Shah', responseStatus: 'needsAction' },
         { email: 'gone@acme.com', responseStatus: 'declined' },
         { email: 'room@resource.calendar.google.com', resource: true }
@@ -48,7 +48,7 @@ describe('Google events', () => {
       description: 'Agenda:\npricing & terms',
       link: 'https://meet.google.com/abc-defg-hij'
     })
-    expect(event?.attendees.map((person) => person.email)).toEqual(['me@algomau.ca', 'priya@acme.com'])
+    expect(event?.attendees.map((person) => person.email)).toEqual(['me@example.edu', 'priya@acme.com'])
   })
 
   it('reads all-day dates as local midnight and finds Zoom links in the conference data', () => {

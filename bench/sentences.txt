@@ -10,7 +10,7 @@ our revenue grew by twenty three percent last year
 how do you prioritize when everything is urgent
 explain the cap theorem in simple terms
 where do you see yourself in five years
-i worked on a quantum key distribution simulation at algoma university
+i worked on a network security simulation at my university
 the deadline is november eighteenth at three pm toronto time
 what is the time complexity of binary search
 could you give me an example of using react hooks

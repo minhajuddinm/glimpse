@@ -2,9 +2,18 @@
   "name": "glimpse",
   "productName": "Glimpse",
   "version": "0.1.0",
-  "description": "Invisible real-time conversation copilot for Windows and macOS",
+  "description": "Invisible real-time call copilot for Windows: local transcription, answers from your own notes",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "author": "Glimpse contributors",
+  "homepage": "https://github.com/minhajuddinm/glimpse",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/minhajuddinm/glimpse.git"
+  },
+  "bugs": {
+    "url": "https://github.com/minhajuddinm/glimpse/issues"
+  },
   "main": "./out/main/index.js",
   "engines": {
     "node": ">=22"
@@ -124,6 +133,5 @@
       "node_modules/@img/**"
     ],
     "copyright": "Copyright © 2026 Glimpse contributors"
-  },
-  "author": "Glimpse contributors"
+  }
 }
