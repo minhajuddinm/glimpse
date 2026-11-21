@@ -1,3 +1,4 @@
+import { connect } from 'node:net'
 import { describe, expect, it } from 'vitest'
 import { authorizationUrl, checkGoogleClient, fromGoogleEvent, GoogleCalendar, parseSavedClient, signInWithGoogle, type Fetch } from '../src/main/calendar/google'
 
@@ -124,6 +125,12 @@ describe('GoogleCalendar', () => {
     await expect(new GoogleCalendar({ client: () => CLIENT, refreshToken: () => 'rt', now: () => from, fetch: wrong.fetcher }).events(from, to)).rejects.toThrow(/Desktop app/)
 
     await expect(new GoogleCalendar({ client: () => null, refreshToken: () => 'rt', now: () => from }).events(from, to)).rejects.toThrow(/Not signed in/)
+
+    // A body that is not JSON: a readable message, not a raw parser error.
+    const garbled = api((url) => (url.hostname === 'oauth2.googleapis.com' ? json({ access_token: 'at', expires_in: 3600 }) : new Response('<html>proxy error</html>', { status: 200 })))
+    await expect(new GoogleCalendar({ client: () => CLIENT, refreshToken: () => 'rt', now: () => from, fetch: garbled.fetcher }).events(from, to)).rejects.toThrow(
+      'Google Calendar sent something Glimpse could not read.'
+    )
   })
 })
 
@@ -163,6 +170,62 @@ describe('signInWithGoogle', () => {
     await expect(pending).rejects.toThrow(/cancelled/)
 
     await expect(signInWithGoogle({ client: CLIENT, fetch: fetcher, timeoutMs: 50, openBrowser: () => Promise.resolve() })).rejects.toThrow(/did not finish/)
+  })
+
+  it('answers a malformed request instead of throwing in the main process', async () => {
+    const { fetcher } = api(() => json({ access_token: 'at', expires_in: 3600, refresh_token: 'rt-1' }))
+    let reply = ''
+    const token = await signInWithGoogle({
+      client: CLIENT,
+      fetch: fetcher,
+      openBrowser: async (authUrl) => {
+        const url = new URL(authUrl)
+        const redirect = new URL(url.searchParams.get('redirect_uri') ?? '')
+        // A request line no URL parser accepts, as any local program could send.
+        reply = await new Promise<string>((resolve) => {
+          const socket = connect(Number(redirect.port), '127.0.0.1', () => {
+            socket.end('GET http://[ HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n')
+          })
+          let out = ''
+          socket.on('data', (chunk: Buffer) => {
+            out += chunk.toString()
+            socket.destroy()
+            resolve(out)
+          })
+          socket.on('close', () => {
+            resolve(out)
+          })
+        })
+        await (await fetch(`${redirect.origin}/?state=${url.searchParams.get('state') ?? ''}&code=c`)).text()
+      }
+    })
+    expect(reply).toMatch(/^HTTP\/1\.1 404/)
+    expect(token).toBe('rt-1')
+  })
+
+  it('a cancel during the token swap stops it, so nothing is saved', async () => {
+    const controller = new AbortController()
+    let aborted = false
+    const fetcher: Fetch = (_url, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          aborted = true
+          reject(new Error('aborted'))
+        })
+        // Google has the code: Glimpse is now waiting for the token, and the user presses Cancel.
+        controller.abort()
+      })
+    await expect(signInWithGoogle({ client: CLIENT, fetch: fetcher, signal: controller.signal, openBrowser: browser((state) => `state=${state}&code=c`) })).rejects.toThrow(
+      'Google sign-in was cancelled.'
+    )
+    expect(aborted).toBe(true)
+  })
+
+  it('a refused code while signing in says to try again, not to disconnect', async () => {
+    const { fetcher } = api(() => json({ error: 'invalid_grant' }, 400))
+    const failure = signInWithGoogle({ client: CLIENT, fetch: fetcher, openBrowser: browser((state) => `state=${state}&code=old`) })
+    await expect(failure).rejects.toThrow(/Try signing in again/)
+    await expect(failure).rejects.not.toThrow(/Disconnect/)
   })
 
   it('fails clearly when Google grants no refresh token', async () => {

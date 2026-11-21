@@ -30,7 +30,7 @@ export const GoogleClientSchema = z.object({ id: z.string().min(1), secret: z.st
 export function checkGoogleClient(id: string, secret: string): GoogleClient {
   const client = { id: id.trim(), secret: secret.trim() }
   if (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(client.id)) {
-    throw new Error('That is not a Google client ID: it ends in .apps.googleusercontent.com. Copy it from Google Cloud → Clients.')
+    throw new Error('That is not a Google client ID. A client ID ends in .apps.googleusercontent.com: copy it from Google Cloud → Clients.')
   }
   if (client.secret === '' || /\s/.test(client.secret)) throw new Error('Paste the client secret too (it usually starts with GOCSPX-).')
   return client
@@ -146,8 +146,12 @@ async function apiError(response: Response): Promise<Error> {
   return new Error(`Google Calendar answered ${String(response.status)}.`)
 }
 
+const CANCELLED = 'Google sign-in was cancelled.'
+
 /** Sign-in and token errors in plain words. */
-function tokenError(code: string): Error {
+function tokenError(code: string, signingIn: boolean): Error {
+  // While signing in, invalid_grant means the one-time code was refused (used, or too old), not a lost sign-in.
+  if (code === 'invalid_grant' && signingIn) return new Error('Google did not accept the sign-in (it may have taken too long). Try signing in again.')
   if (code === 'invalid_grant') return new Error('Your Google sign-in has expired or was revoked. Disconnect, then sign in with Google again.')
   if (code === 'invalid_client' || code === 'unauthorized_client') {
     return new Error('Google did not accept the client ID and secret. Check them in Google Cloud → Clients (the type must be "Desktop app").')
@@ -155,20 +159,23 @@ function tokenError(code: string): Error {
   return new Error(`Google sign-in failed (${code}).`)
 }
 
-async function requestToken(fetcher: Fetch, body: Record<string, string>): Promise<z.infer<typeof TokenSchema>> {
+/** Swaps a code or a refresh token for tokens. `cancel` (sign-in only) aborts the request. */
+async function requestToken(fetcher: Fetch, body: Record<string, string>, cancel?: AbortSignal): Promise<z.infer<typeof TokenSchema>> {
+  const timeout = AbortSignal.timeout(20_000)
   const response = await fetcher(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(body).toString(),
-    signal: AbortSignal.timeout(20_000)
+    signal: cancel === undefined ? timeout : AbortSignal.any([cancel, timeout])
   }).catch(() => {
-    throw new Error('Could not reach Google. Check the internet connection.')
+    throw new Error(cancel?.aborted === true ? CANCELLED : 'Could not reach Google. Check the internet connection.')
   })
   const json: unknown = await response.json().catch(() => null)
+  if (cancel?.aborted === true) throw new Error(CANCELLED)
   const token = TokenSchema.safeParse(json)
   if (response.ok && token.success) return token.data
   const failure = TokenErrorSchema.safeParse(json)
-  throw tokenError(failure.success ? failure.data.error : `HTTP ${String(response.status)}`)
+  throw tokenError(failure.success ? failure.data.error : `HTTP ${String(response.status)}`, body.grant_type === 'authorization_code')
 }
 
 const DONE_PAGE = (ok: boolean, text: string): string =>
@@ -206,14 +213,19 @@ export async function signInWithGoogle(options: SignInOptions): Promise<string> 
     // The answer can arrive (or fail) while the browser is still opening: handled when awaited below.
     code.catch(() => undefined)
     await options.openBrowser(authorizationUrl(options.client, redirectUri, challenge, state))
-    const token = await requestToken(fetcher, {
-      client_id: options.client.id,
-      client_secret: options.client.secret,
-      code: await code,
-      code_verifier: verifier,
-      grant_type: 'authorization_code',
-      redirect_uri: redirectUri
-    })
+    const token = await requestToken(
+      fetcher,
+      {
+        client_id: options.client.id,
+        client_secret: options.client.secret,
+        code: await code,
+        code_verifier: verifier,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri
+      },
+      // Cancel (or a newer sign-in) also stops the token swap, so a cancelled sign-in is never saved.
+      options.signal
+    )
     if (token.refresh_token === undefined) throw new Error('Google did not grant lasting access. Try signing in again.')
     return token.refresh_token
   } finally {
@@ -235,15 +247,16 @@ function waitForCode(server: Server, state: string, signal: AbortSignal | undefi
       finish(new Error('Google sign-in did not finish. If Google showed an error (for example that your organisation blocks this app), that account cannot connect this way.'))
     }, timeoutMs)
     const onAbort = (): void => {
-      finish(new Error('Google sign-in was cancelled.'))
+      finish(new Error(CANCELLED))
     }
     signal?.addEventListener('abort', onAbort)
     // Cancelled before the server was even listening.
     if (signal?.aborted === true) onAbort()
     server.on('request', (request, response) => {
-      const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+      // URL.parse, not new URL: a malformed request line (any local program can send one) must not throw in the main process.
+      const url = URL.parse(request.url ?? '/', 'http://127.0.0.1')
       // The browser also asks for /favicon.ico; and a request without our state is not Google's answer.
-      if (url.pathname !== '/' || url.searchParams.get('state') !== state) {
+      if (url === null || url.pathname !== '/' || url.searchParams.get('state') !== state) {
         response.writeHead(404).end()
         return
       }
@@ -252,7 +265,7 @@ function waitForCode(server: Server, state: string, signal: AbortSignal | undefi
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       if (error !== null || code === null) {
         response.end(DONE_PAGE(false, 'Google sign-in was cancelled. You can close this tab.'))
-        finish(new Error(error === 'access_denied' ? 'Google sign-in was cancelled.' : `Google sign-in failed (${error ?? 'no code'}).`))
+        finish(new Error(error === 'access_denied' ? CANCELLED : `Google sign-in failed (${error ?? 'no code'}).`))
         return
       }
       response.end(DONE_PAGE(true, 'You can close this tab and go back to Glimpse.'))
@@ -329,7 +342,10 @@ export class GoogleCalendar {
         continue
       }
       if (!response.ok) throw await apiError(response)
-      const json: unknown = await response.json()
+      // A body that is not JSON (a proxy's error page, a cut connection) gets a readable message too.
+      const json: unknown = await response.json().catch(() => {
+        throw new Error('Google Calendar sent something Glimpse could not read.')
+      })
       return json
     }
   }

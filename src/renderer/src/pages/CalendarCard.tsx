@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CalendarDays, CalendarX2, Link2, LogIn, Mic, RefreshCw, Sparkles, Unplug, Users, X } from 'lucide-react'
 import { isRealMeeting, type CalendarEvent, type CalendarStatus } from '../../../shared/calendar'
 import type { MeetingState } from '../../../shared/meetings'
@@ -14,6 +14,8 @@ function GoogleConnect({ savedClientId, onStatus, onError }: { savedClientId: st
   const [clientSecret, setClientSecret] = useState('')
   const [editing, setEditing] = useState(savedClientId === null)
   const [waiting, setWaiting] = useState(false)
+  // Pressing Cancel is not an error worth a red banner.
+  const cancelled = useRef(false)
 
   const connect = async (): Promise<void> => {
     setWaiting(true)
@@ -22,8 +24,9 @@ function GoogleConnect({ savedClientId, onStatus, onError }: { savedClientId: st
       onStatus(await window.glimpse.invoke('calendar:google-connect', editing ? { clientId, clientSecret } : { clientId: '', clientSecret: '' }))
       setClientSecret('')
     } catch (caught) {
-      onError(errorMessage(caught))
+      if (!cancelled.current) onError(errorMessage(caught))
     } finally {
+      cancelled.current = false
       setWaiting(false)
     }
   }
@@ -57,7 +60,8 @@ function GoogleConnect({ savedClientId, onStatus, onError }: { savedClientId: st
         </details>
       )}
       {editing ? (
-        <div className="space-y-2">
+        // A grid, so each field takes the full width (TextInput sizes itself with flex-1).
+        <div className="grid gap-2">
           <TextInput value={clientId} onChange={setClientId} placeholder="Client ID: 1234…apps.googleusercontent.com" aria-label="Google client ID" />
           <TextInput type="password" value={clientSecret} onChange={setClientSecret} placeholder="Client secret: GOCSPX-…" onEnter={() => void connect()} aria-label="Google client secret" />
         </div>
@@ -74,7 +78,15 @@ function GoogleConnect({ savedClientId, onStatus, onError }: { savedClientId: st
           {waiting ? 'Waiting for Google in your browser…' : 'Sign in with Google'}
         </Button>
         {waiting && (
-          <Button tone="ghost" size="sm" icon={X} onClick={() => void window.glimpse.invoke('calendar:google-cancel', null)}>
+          <Button
+            tone="ghost"
+            size="sm"
+            icon={X}
+            onClick={() => {
+              cancelled.current = true
+              void window.glimpse.invoke('calendar:google-cancel', null)
+            }}
+          >
             Cancel
           </Button>
         )}
@@ -199,7 +211,7 @@ export function CalendarCard({ meeting }: { meeting: MeetingState }) {
       description="Read-only: Glimpse sees your events and never changes your calendar."
       actions={badge}
     >
-      {error !== null && (
+      {status.connected && error !== null && (
         <div className="mb-3">
           <ErrorBanner message={error} />
         </div>
@@ -208,6 +220,8 @@ export function CalendarCard({ meeting }: { meeting: MeetingState }) {
       {!status.connected ? (
         <div className="space-y-4">
           <GoogleConnect savedClientId={status.googleClientId} onStatus={setStatus} onError={setError} />
+          {/* Right under the button just pressed: above the setup steps it would be out of sight. */}
+          {error !== null && <ErrorBanner message={error} />}
           <details className="border-t border-hairline pt-3">
             <summary className="cursor-pointer select-none text-[12.5px] font-medium text-text-muted">Or use a secret iCal address (no Google Cloud needed, if your account has one)</summary>
             <div className="mt-3 space-y-3">
