@@ -1,6 +1,6 @@
 # Your notes folder
 
-Glimpse searches your notes **before** it asks the AI. When a question matches something you've prepared, it shows your answer instantly, marked *from your notes*, and the AI then adapts it to the exact question. This is what makes answers sound like you, with your real projects and numbers, instead of generic advice.
+Glimpse searches your notes by meaning and keyword before it asks the AI (retrieval-augmented generation, or RAG). It selects relevant facts, then streams a short answer written for the exact question. With a saved AI key, the panel shows the synthesized answer directly instead of first copying a prepared paragraph. Projects, roles and numbers stay grounded in your notes. Without a key, matching prepared answers remain available as saved notes.
 
 ## Adding notes
 
@@ -53,7 +53,7 @@ Also supported:
 - **CSV** with `question,answer` columns.
 - **JSON** as a list of `{ "question": "...", "answer": "..." }`.
 
-Other text (resume bullets, project write-ups, pricing tables) is split into passages and searched too. It just isn't shown as an instant answer.
+Other text (resume bullets, project write-ups, pricing tables) is split into passages and searched too. The AI uses the relevant passages as evidence for its answer.
 
 ### Tips
 

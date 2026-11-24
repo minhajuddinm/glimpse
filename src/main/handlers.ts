@@ -69,6 +69,11 @@ export function registerAllHandlers(ctx: HandlerContext): void {
     return overlay.state()
   })
 
+  registerHandler('overlay:scroll-rect', isTrustedSender, (rect, event) => {
+    if (event.sender === overlay.window?.webContents) overlay.setScrollRect(rect)
+    return null
+  })
+
   registerHandler('overlay:hitRects', isTrustedSender, ({ rects }) => {
     overlay.setHitRects(rects)
     return null

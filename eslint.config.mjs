@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import globals from 'globals'
 
 export default tseslint.config(
-  { ignores: ['scripts/*.cjs', 'src/renderer/public/**', 'out/**', 'release/**', 'node_modules/**', 'models/**', '.research-private/**'] },
+  { ignores: ['.cache/**', 'scripts/*.cjs', 'src/renderer/public/**', 'out/**', 'release/**', 'node_modules/**', 'models/**', '.research-private/**'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {

@@ -126,11 +126,11 @@ describe('AnswerScheduler (C2)', () => {
 })
 
 describe('enforceContract (C4)', () => {
-  it('strips preambles and headings and flags them for a retry', () => {
+  it('strips preambles and headings without requiring another generation', () => {
     const result = enforceContract('Sure! ## Answer\nA thread shares memory with its process.', 'answer')
     expect(result.text).toBe('A thread shares memory with its process.')
     expect(result.violations).toEqual(['preamble', 'heading'])
-    expect(needsRetry(result.violations)).toBe(true)
+    expect(needsRetry(result.violations)).toBe(false)
   })
 
   it('truncates past 55 words at a sentence boundary', () => {

@@ -11,7 +11,7 @@ The overlay is a slim panel on the right of your main screen. It shows answers a
 
 ### Click-through
 
-By default **clicks go through the panel** to the app behind it, so it never gets in the way. Only the small **Unlock** button stays clickable. To click inside the panel, for example to scroll, press **Unlock** (or `Ctrl+Alt+C`), and press **Lock** when you're done.
+By default **clicks go through the panel** to the app behind it, so it never gets in the way. On Windows you can scroll over the answers even while the panel is locked; clicks still pass through. The **Unlock** button and **Latest** control stay clickable. Press **Unlock** (or `Ctrl+Alt+C`) to interact normally with the entire panel, and **Lock** when you are done.
 
 ### Panic hide
 
@@ -19,7 +19,7 @@ By default **clicks go through the panel** to the app behind it, so it never get
 
 ## Answers
 
-When the other side asks a question, Glimpse answers on the panel in under 55 words, with no preamble. Answers based on your notes show the source file underneath.
+When the other side asks a question, Glimpse answers on the panel in under 55 words, with no preamble. Notes are used internally; the live answer cards omit filenames and evidence labels so you can read the answer immediately. Scroll down to read earlier answers (up to the 12 most recent cards). When you read an older answer, arriving answers and streaming text keep your reading position. **Latest ↑** returns to the newest answer.
 
 - **Answer automatically** (on by default, **Answers → When to answer**): answers each question the other side asks. Turn it off to answer only when you press `Ctrl+Alt+Enter`.
 - **Fact-check claims** (off by default): flags numbers, dates and names the other side states, as ✓ correct, ✗ wrong or ⚠ unsure.

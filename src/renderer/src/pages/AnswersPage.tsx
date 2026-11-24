@@ -213,7 +213,6 @@ export function AnswersPage() {
                 {latest.status === 'error' ? latest.error : latest.text}
               </p>
             )}
-            {latest.sources.length > 0 && <p className="mt-2 text-[11px] text-text-faint">Notes: {latest.sources.join(', ')}</p>}
           </div>
         )}
         {latest === undefined && !keys.anthropic && !keys.groq && (

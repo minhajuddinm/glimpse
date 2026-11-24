@@ -68,6 +68,7 @@ export const ipcContract = {
   },
   'overlay:state': { request: z.null(), response: OverlayStateSchema },
   'overlay:set-visible': { request: z.object({ visible: z.boolean() }), response: OverlayStateSchema },
+  'overlay:scroll-rect': { request: RectSchema.nullable(), response: z.null() },
   'overlay:hitRects': { request: z.object({ rects: z.array(RectSchema).max(32) }), response: z.null() },
   'overlay:canaryAck': { request: z.object({ on: z.boolean() }), response: z.null() },
   'protection:status': { request: z.null(), response: ProtectionStatusSchema },
@@ -138,6 +139,7 @@ export const ipcContract = {
 export const ipcEvents = {
   'overlay:state': OverlayStateSchema,
   'overlay:canary': z.object({ on: z.boolean() }),
+  'overlay:scroll': z.object({ deltaY: z.number() }),
   'settings:changed': SettingsSchema,
   'live:status': LiveStatusSchema,
   'capture:control': CaptureControlSchema,

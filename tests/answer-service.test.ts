@@ -35,7 +35,7 @@ class FakeProvider implements LlmProvider {
 
 const PREPARED: KbHit = { file: 'interview.md', kind: 'qa', question: 'Tell me about yourself', text: 'I build developer tools; I interned at Shopify.', score: 1, similarity: 0.9 }
 
-function setup(options: { provider: LlmProvider | null; hits?: KbHit[]; settings?: Partial<Settings> }) {
+function setup(options: { provider: LlmProvider | null; hits?: KbHit[]; settings?: Partial<Settings>; throttleMs?: number }) {
   let t = 1_000_000
   const now = (): number => t
   const transcript: TranscriptSnapshot = { segments: [], partials: { them: '', you: '' } }
@@ -49,7 +49,7 @@ function setup(options: { provider: LlmProvider | null; hits?: KbHit[]; settings
     transcript: () => transcript,
     emit: (snapshot) => emitted.push(snapshot),
     now,
-    throttleMs: 0
+    throttleMs: options.throttleMs ?? 0
   })
   let id = 1
   const say = (text: string, source: 'them' | 'you' = 'them'): Segment => {
@@ -87,13 +87,14 @@ describe('AnswerService', () => {
     expect(service.snapshot().answers).toEqual([])
   })
 
-  it('shows a matching prepared answer from the notes instantly, then refines it with the model', async () => {
+  it('streams the tailored model answer without exposing a copied note first', async () => {
     const provider = new FakeProvider(['I build developer tools and interned at Shopify on payments. '])
     const { service, emitted, say } = setup({ provider, hits: [PREPARED] })
     say('Could you introduce yourself')
     await settle()
     const firstWithText = emitted.flatMap((s) => s.answers).find((a) => a.text !== '')
-    expect(firstWithText).toMatchObject({ origin: 'notes', text: PREPARED.text, sources: ['interview.md'] })
+    expect(firstWithText).toMatchObject({ origin: 'notes+model', sources: ['interview.md'] })
+    expect(emitted.flatMap((snapshot) => snapshot.answers).some((answer) => answer.text === PREPARED.text)).toBe(false)
     expect(service.snapshot().answers[0]).toMatchObject({ status: 'done', origin: 'notes+model' })
     expect(provider.calls[0]?.user).toContain('kind="prepared answer"')
   })
@@ -111,14 +112,13 @@ describe('AnswerService', () => {
     expect(without.service.snapshot().answers[0]?.error).toContain('API key')
   })
 
-  it('retries once when the model breaks the output rules', async () => {
+  it('cleans repairable formatting locally without a second model request', async () => {
     const provider = new FakeProvider(['Sure! ## Heading\nAnswer one. ', 'A clean answer. '])
     const { service, say } = setup({ provider })
     say('Explain the CAP theorem in simple terms')
     await settle()
-    expect(provider.calls).toHaveLength(2)
-    expect(provider.calls[1]?.user).toContain('broke the output rules')
-    expect(service.snapshot().answers[0]?.text).toBe('A clean answer.')
+    expect(provider.calls).toHaveLength(1)
+    expect(service.snapshot().answers[0]?.text).toBe('Answer one.')
   })
 
   it('a manual request cancels the answer in flight mid-stream', async () => {
@@ -156,7 +156,7 @@ describe('AnswerService', () => {
     expect(service.snapshot().answers[0]).toMatchObject({ kind: 'elaborate', model: 'deep-model', question: 'What is a hash map' })
   })
 
-  it('a model error is shown with its reason, keeping a prepared answer if there was one', async () => {
+  it('reports generation failure instead of silently substituting a copied note', async () => {
     const failing: LlmProvider = { id: 'groq', model: () => 'm', stream: () => Promise.reject(new Error('Groq error 401')) }
     const plain = setup({ provider: failing })
     plain.say('Explain the CAP theorem')
@@ -165,6 +165,38 @@ describe('AnswerService', () => {
     const withNotes = setup({ provider: failing, hits: [PREPARED] })
     withNotes.say('Tell me about yourself')
     await settle()
-    expect(withNotes.service.snapshot().answers[0]).toMatchObject({ status: 'done', origin: 'notes' })
+    expect(withNotes.service.snapshot().answers[0]).toMatchObject({ status: 'error', text: '', error: 'Groq error 401' })
   })
+  it('emits the first useful delta immediately even with throttling, keeping its timestamp stable', async () => {
+    let finish: (() => void) | undefined
+    let append: ((delta: string) => void) | undefined
+    const provider: LlmProvider = {
+      id: 'anthropic', model: () => 'fast-model',
+      stream: async (_call, onText) => {
+        append = onText
+        onText('The direct answer')
+        await new Promise<void>((resolve) => { finish = resolve })
+        return 'The direct answer with one example.'
+      }
+    }
+    const { service, emitted, advance } = setup({ provider, throttleMs: 1000, hits: [PREPARED] })
+    const asking = service.ask('How did you test it?')
+    await settle()
+    const first = emitted.find((snapshot) => snapshot.answers[0]?.text === 'The direct answer')?.answers[0]
+    expect(first).toMatchObject({ status: 'streaming', origin: 'notes+model' })
+    advance(200)
+    append?.(' with one example.')
+    finish?.()
+    await asking
+    expect(service.snapshot().answers[0]?.firstTextAt).toBe(first?.firstTextAt)
+  })
+
+  it('retries empty output once without retrying a cleaned, non-empty answer', async () => {
+    const provider = new FakeProvider(['', 'A direct answer.'])
+    const { service } = setup({ provider })
+    await service.ask('What is the tradeoff?')
+    expect(provider.calls).toHaveLength(2)
+    expect(service.snapshot().answers[0]).toMatchObject({text: 'A direct answer.', status: 'done'})
+  })
+
 })

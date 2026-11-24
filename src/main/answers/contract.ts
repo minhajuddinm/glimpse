@@ -75,7 +75,7 @@ export function enforceContract(raw: string, kind: AnswerKind): ContractResult {
   return { text, violations }
 }
 
-/** Violations bad enough to be worth one retry (a long answer is already truncated cleanly). */
+/** Only empty output needs another request; formatting and length are repaired locally for live latency. */
 export function needsRetry(violations: readonly Violation[]): boolean {
-  return violations.includes('heading') || violations.includes('empty') || violations.includes('preamble')
+  return violations.includes('empty')
 }

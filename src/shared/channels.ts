@@ -14,6 +14,7 @@ export const INVOKE_CHANNELS = [
   'overlay:state',
   'overlay:set-visible',
   'overlay:hitRects',
+  'overlay:scroll-rect',
   'overlay:canaryAck',
   'protection:status',
   'selftest:run',
@@ -71,6 +72,7 @@ export const INVOKE_CHANNELS = [
 export const EVENT_CHANNELS = [
   'overlay:state',
   'overlay:canary',
+  'overlay:scroll',
   'settings:changed',
   'live:status',
   'capture:control',

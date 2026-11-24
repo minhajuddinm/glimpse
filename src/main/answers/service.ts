@@ -24,8 +24,8 @@ const KEEP = 12
 const NO_PROVIDER = 'Add an Anthropic or Groq API key in Settings → Answers to generate answers.'
 
 /**
- * Pillar C orchestration. For each trigger: search the notes, show a matching
- * prepared answer at once (if any), then stream a model answer that refines it,
+ * For each trigger: retrieve relevant facts from the notes, then stream an answer
+ * written for the exact question. Saved answers are only an explicit offline fallback;
  * enforce the output contract (one retry), and keep the newest answers for the UI.
  */
 export class AnswerService {
@@ -144,16 +144,18 @@ export class AnswerService {
       const hits = query.trim() === '' ? [] : await this.deps.search(query)
       if (controller.signal.aborted) return
       const sources = [...new Set(hits.map((hit) => hit.file))]
-      const instant = kind === 'answer' ? instantAnswer(hits) : null
-      if (instant !== null) {
-        this.update(id, { text: enforceContract(instant.text, kind).text, origin: 'notes', sources: [instant.file], status: 'streaming', firstTextAt: this.deps.now() }, true)
-      }
-
       const provider = this.deps.provider()
       if (provider === null) {
-        if (instant !== null) this.update(id, { status: 'done', doneAt: this.deps.now() }, true)
-        else this.update(id, { status: 'error', error: NO_PROVIDER, sources }, true)
-        this.finish(id, instant !== null)
+        const offline = kind === 'answer' ? instantAnswer(hits) : null
+        if (offline !== null) {
+          const text = enforceContract(offline.text, kind).text
+          this.update(id, {
+            text, origin: 'notes', sources: [offline.file], status: 'done',
+            firstTextAt: this.deps.now(), doneAt: this.deps.now(),
+            error: 'Saved note only. Add an API key in Settings → Answers for a tailored answer.'
+          }, true)
+        } else this.update(id, { status: 'error', error: NO_PROVIDER, sources }, true)
+        this.finish(id, offline !== null)
         return
       }
 
@@ -173,6 +175,7 @@ export class AnswerService {
         const full = await provider.stream(
           { system: prompt.system, user: prompt.user, maxTokens: prompt.maxTokens, deep: kind === 'elaborate', ...(imageJpeg === undefined ? {} : { imageJpeg }) },
           (delta) => {
+            if (controller.signal.aborted) return
             raw += delta
             const live = enforceContract(raw, kind).text
             if (live.length === 0) return
@@ -184,28 +187,24 @@ export class AnswerService {
               sources,
               model: provider.model(kind === 'elaborate'),
               firstTextAt: current?.firstTextAt ?? this.deps.now()
-            })
+            }, current?.firstTextAt === null)
           },
           controller.signal
         )
+        if (this.controllers.get(id) !== controller) return
         const result = enforceContract(full, kind)
         if (attempt === 0 && needsRetry(result.violations)) {
           correction = describe(result.violations)
           continue
         }
-        this.update(id, { text: result.text, status: result.violations.includes('empty') ? 'error' : 'done', error: result.violations.includes('empty') ? 'The model returned nothing.' : null, doneAt: this.deps.now() }, true)
+        const firstTextAt = this.answers.find((answer) => answer.id === id)?.firstTextAt
+        this.update(id, { origin: hits.length > 0 ? 'notes+model' : 'model', sources, model: provider.model(kind === 'elaborate'), firstTextAt: result.text === '' ? null : (firstTextAt ?? this.deps.now()), text: result.text, status: result.violations.includes('empty') ? 'error' : 'done', error: result.violations.includes('empty') ? 'The model returned nothing.' : null, doneAt: this.deps.now() }, true)
         break
       }
-      this.finish(id, true)
+      this.finish(id, this.answers.find((answer) => answer.id === id)?.status === 'done')
     } catch (error) {
       if (controller.signal.aborted) return
-      const current = this.answers.find((answer) => answer.id === id)
-      // Keep a prepared answer on screen if only the refinement failed.
-      if (current !== undefined && current.origin === 'notes' && current.text !== '') {
-        this.update(id, { status: 'done', doneAt: this.deps.now(), error: null }, true)
-      } else {
-        this.update(id, { status: 'error', error: error instanceof Error ? error.message : String(error) }, true)
-      }
+      this.update(id, { status: 'error', error: error instanceof Error ? error.message : String(error) }, true)
       this.finish(id, false)
     }
   }

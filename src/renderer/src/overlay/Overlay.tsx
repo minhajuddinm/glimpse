@@ -3,7 +3,7 @@ import type { OverlayState } from '../../../shared/capture'
 import type { Settings } from '../../../shared/settings'
 import type { AnswersSnapshot } from '../../../shared/answers'
 import type { TranscriptSnapshot } from '../../../shared/transcript'
-import { AnswerCards } from './AnswerCards'
+import { AnswerHistory } from './AnswerHistory'
 import { subscribe } from '../ipc'
 import { IS_MAC } from '../platform'
 import { displayAccelerator } from '../../../shared/accelerator'
@@ -39,6 +39,7 @@ export function Overlay() {
   const [answers, setAnswers] = useState<AnswersSnapshot>({ answers: [] })
   const [transcript, setTranscript] = useState<TranscriptSnapshot>({ segments: [], partials: { them: '', you: '' } })
   const lockRef = useRef<HTMLButtonElement>(null)
+  const historyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     void window.glimpse.invoke('overlay:state', null).then(setState)
@@ -71,20 +72,33 @@ export function Overlay() {
     }
   }, [paint])
 
-  // Only the Lock/Unlock button stays clickable while click-through is on: the rest of the
-  // overlay, header included, lets clicks reach the app behind it.
+  // Clicks still pass through while locked; a native wheel-only bridge handles history scrolling.
   useEffect(() => {
-    const button = lockRef.current
-    if (button === null) return
     const report = (): void => {
-      const { x, y, width, height } = button.getBoundingClientRect()
-      void window.glimpse.invoke('overlay:hitRects', { rects: [{ x, y, width, height }] })
+      const buttons = [lockRef.current, ...document.querySelectorAll<HTMLElement>('[data-overlay-control]')]
+        .filter((button): button is HTMLElement => button !== null)
+      const rects = buttons.map((button) => {
+        const { x, y, width, height } = button.getBoundingClientRect()
+        return { x, y, width, height }
+      })
+      void window.glimpse.invoke('overlay:hitRects', { rects })
+      const viewport = historyRef.current
+      const bounds = viewport?.getBoundingClientRect()
+      void window.glimpse.invoke('overlay:scroll-rect', bounds === undefined || viewport === null || viewport.scrollHeight <= viewport.clientHeight ? null : {
+        x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height
+      })
     }
     report()
     const observer = new ResizeObserver(report)
-    observer.observe(button)
+    if (historyRef.current !== null) observer.observe(historyRef.current)
+    if (lockRef.current !== null) observer.observe(lockRef.current)
+    const mutations = new MutationObserver(report)
+    mutations.observe(document.body, { childList: true, subtree: true })
+    window.addEventListener('resize', report)
     return () => {
       observer.disconnect()
+      mutations.disconnect()
+      window.removeEventListener('resize', report)
     }
   }, [])
 
@@ -126,14 +140,11 @@ export function Overlay() {
 
           <div className="flex min-h-0 flex-1 flex-col gap-3 px-3.5 py-3.5">
             <div className="min-h-0 flex-[3] overflow-hidden">
-              {answers.answers.filter((answer) => answer.status !== 'cancelled').length === 0 ? (
-                <p className="px-0.5 text-[12px] leading-relaxed text-white/35">
+              <AnswerHistory answers={answers.answers} regenerateKey={hotkeys?.regenerate ?? ''} viewportRef={historyRef}
+                empty={<p className="px-0.5 text-[12px] leading-relaxed text-white/35">
                   Answers appear here when the other side asks something
-                  {hotkeys !== undefined ? ` — or press ${displayAccelerator(hotkeys.answerNow, IS_MAC)} to answer the last question` : ''}. This panel is excluded from screen capture.
-                </p>
-              ) : (
-                <AnswerCards answers={answers.answers} regenerateKey={hotkeys?.regenerate ?? ''} />
-              )}
+                  {hotkeys !== undefined ? ` — or press ${displayAccelerator(hotkeys.answerNow, IS_MAC)} to answer the last question` : ''}. Scroll over the answers to read earlier ones, even while locked.
+                </p>} />
             </div>
             <ol className="min-h-0 flex-[2] space-y-1 overflow-hidden border-t border-white/5 pt-2.5 text-[12px] leading-relaxed">
               {transcript.segments.length === 0 && transcript.partials.them === '' && transcript.partials.you === '' && (

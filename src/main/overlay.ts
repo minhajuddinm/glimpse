@@ -2,7 +2,8 @@ import { join } from 'node:path'
 import { BrowserWindow, screen, type Display } from 'electron'
 import type { OverlayState, ProtectionStatus, Rect } from '../shared/capture'
 import type { Settings } from '../shared/settings'
-import { ClickThroughPoller } from './clickthrough'
+import { ClickThroughPoller, pointInRect } from './clickthrough'
+import { installWindowsWheelHandler } from './wheel'
 import {
   CAPTURE_SAFE_OPACITY,
   WDA_NONE,
@@ -57,6 +58,8 @@ export class OverlayController {
   private protection: ProtectionStatus = INITIAL_PROTECTION
   /** Set by the overlay page: just its Lock/Unlock button. Until it reports, nothing blocks clicks. */
   private hitRects: Rect[] = []
+  private scrollRect: Rect | null = null
+  private stopWheel: (() => void) | null = null
   private canaryWaiter: ((on: boolean) => void) | null = null
   private readonly poller: ClickThroughPoller
 
@@ -129,6 +132,8 @@ export class OverlayController {
     this.protection = applyProtection(win, true, this.options.windowsBuild)
     lockDownNavigation(win)
     win.on('closed', () => {
+      this.stopWheel?.()
+      this.stopWheel = null
       this.poller.stop()
       this.win = null
       this.visible = false
@@ -137,6 +142,16 @@ export class OverlayController {
     const dev = devRendererUrl()
     await (dev !== null ? win.loadURL(`${dev}/overlay.html`) : win.loadURL(rendererFileUrl('overlay.html')))
     this.applyOpacity()
+    if (process.platform === 'win32') this.stopWheel = installWindowsWheelHandler((physical, deltaY) => {
+      if (!this.visible || this.panic || this.canary || !this.poller.ignoring || this.scrollRect === null) return false
+      const active = this.window
+      if (active === null) return false
+      const cursor = screen.screenToDipPoint(physical)
+      const bounds = active.getBounds()
+      if (!pointInRect({ x: cursor.x - bounds.x, y: cursor.y - bounds.y }, this.scrollRect)) return false
+      active.webContents.send('overlay:scroll', { deltaY })
+      return true
+    })
     this.poller.start()
     this.emit()
   }
@@ -184,6 +199,10 @@ export class OverlayController {
     this.poller.reset()
     this.poller.tick()
     this.emit()
+  }
+
+  setScrollRect(rect: Rect | null): void {
+    this.scrollRect = rect
   }
 
   setHitRects(rects: readonly Rect[]): void {
@@ -253,6 +272,8 @@ export class OverlayController {
   }
 
   destroy(): void {
+    this.stopWheel?.()
+    this.stopWheel = null
     this.poller.stop()
     this.window?.destroy()
     this.win = null

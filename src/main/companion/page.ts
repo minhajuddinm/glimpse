@@ -18,6 +18,7 @@ export const COMPANION_HTML = `<!doctype html>
 </header>
 <main>
   <section class="answers">
+    <button id="answers-latest" type="button">Latest ↑</button>
     <h2>Answers</h2>
     <div id="answers"><p class="muted">Answers appear here when the other side asks something.</p></div>
   </section>
@@ -54,7 +55,7 @@ li:last-child{border-bottom:0}
 .you .who{color:#6ee7b7}
 .partial{margin:6px 0 0;color:var(--muted);font-style:italic;min-height:0}
 .partial:empty{display:none}
-.card{padding:10px 0;border-bottom:1px solid var(--line)}
+#answers{max-height:65vh;overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none}\n#answers-latest{float:right;border:0;border-radius:6px;padding:2px 8px;background:transparent;color:#c4b5fd;cursor:pointer}\n.card{padding:10px 0;border-bottom:1px solid var(--line)}
 .card:last-child{border-bottom:0}
 .card .q{font-size:12px;color:var(--muted);margin-bottom:4px}
 .card .t{white-space:pre-wrap;font-size:18px;line-height:1.45}
@@ -90,6 +91,7 @@ export const COMPANION_JS = `(function () {
   var LABELS = { answer: 'Answer', 'talking-points': 'Talking points', 'fact-check': 'Fact check', screen: 'From your screen', elaborate: 'More detail', brief: 'Meeting brief' }
   function card(answer, index) {
     var el = document.createElement('div')
+    el.dataset.answerId = String(answer.id)
     el.className = 'card' + (index > 0 ? ' old' : '') + (answer.status === 'error' ? ' error' : '')
     var q = document.createElement('div')
     q.className = 'q'
@@ -99,18 +101,22 @@ export const COMPANION_JS = `(function () {
     t.textContent = answer.status === 'error' ? (answer.error || 'Something went wrong') : (answer.text || (answer.status === 'thinking' ? 'Thinking…' : ''))
     el.appendChild(q)
     el.appendChild(t)
-    if (answer.sources && answer.sources.length) {
-      var m = document.createElement('div')
-      m.className = 'meta'
-      m.textContent = 'From your notes: ' + answer.sources.join(', ')
-      el.appendChild(m)
-    }
     return el
   }
+  document.getElementById('answers-latest').onclick = function () { answersBox.scrollTop = 0 }
   function renderAnswers(snapshot) {
-    var visible = snapshot.answers.filter(function (a) { return a.status !== 'cancelled' }).slice(0, 5)
-    if (visible.length === 0) return
+    var visible = snapshot.answers.filter(function (a) { return a.status !== 'cancelled' })
+    var browsing = answersBox.scrollTop > 8
+    var top = answersBox.getBoundingClientRect().top
+    var anchor = Array.prototype.find.call(answersBox.children, function (el) { return el.getBoundingClientRect().bottom > top + 1 })
+    var anchorId = anchor && anchor.dataset.answerId
+    var offset = anchor ? anchor.getBoundingClientRect().top - top : 0
     answersBox.replaceChildren.apply(answersBox, visible.map(card))
+    if (!browsing) answersBox.scrollTop = 0
+    else if (anchorId) {
+      var restored = Array.prototype.find.call(answersBox.children, function (el) { return el.dataset.answerId === anchorId })
+      if (restored) answersBox.scrollTop += restored.getBoundingClientRect().top - answersBox.getBoundingClientRect().top - offset
+    }
   }
   if (!token) { setStatus('missing access code', 'down'); return }
   var source = new EventSource('/events?t=' + encodeURIComponent(token))

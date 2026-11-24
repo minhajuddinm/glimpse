@@ -94,3 +94,12 @@ One line per deviation from BRIEF v2, with the reason.
 - **Secrets**: the client JSON and the refresh token are in `SecretStore` (safeStorage). The client is saved only after a successful sign-in, so a mistyped one isn't kept. The renderer sees only the client ID, which isn't secret. Disconnecting revokes the token at Google (best effort) and keeps the client for next time.
 - **One calendar at a time**: Google sign-in clears a saved iCal address, and saving an iCal address signs out of Google.
 - **The Calendar API (`singleEvents=true`) expands repeats server-side.** Events you declined, cancelled events and working-location markers are dropped, which fixes the "declined meetings still get briefed" limit of the iCal feed. Rooms and declined attendees are left out of the attendee list.
+
+
+## Focused RAG answers and locked history (2026-11-24)
+- Live model answers now synthesize retrieved facts for the exact question. Raw prepared-note previews are reserved for the explicitly labelled offline fallback. A provider failure is shown, rather than silently presenting a copied note as a successful generation.
+- Target 25–40 spoken words, with the direct answer first. Relevant excerpts are selected throughout long notes/background; the evidence budget includes bounded question/source metadata. No facts or numbers are invented to fill gaps.
+- Only empty model output triggers a second generation. Formatting and length are repaired locally, and the first useful streamed text bypasses the UI throttle.
+- Three approved live requests against the installed profile snapshot: first text 497–666 ms, complete 956–1115 ms, retrieval 4–9 ms, zero copied-note previews. This is a small sample, not a guaranteed p95; the excerpt-selection review fix followed this measurement.
+- Answer history retains all 12 in-memory cards, scrolls with the Windows wheel while locked, and anchors the visible card while new answers stream above it. A wheel-only native hook preserves button click-through elsewhere; Latest returns to the newest answer.
+- Per user preference, source filenames and evidence badges are omitted from the overlay and companion answer cards. Retrieval and factual grounding remain internal.
